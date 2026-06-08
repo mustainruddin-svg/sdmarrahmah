@@ -311,6 +311,29 @@
   }
   .btn-secondary:hover { background: #F8FAFC; border-color: #CBD5E1; }
 
+  /* ============ FILE UPLOAD ============ */
+  .upload-zone {
+    border: 2px dashed #CBD5E1; border-radius: 12px; padding: 18px 16px;
+    text-align: center; cursor: pointer; transition: all 0.2s;
+    background: white; position: relative; overflow: hidden;
+  }
+  .upload-zone:hover, .upload-zone.dragover { border-color: #0EA5E9; background: #F0F9FF; }
+  .upload-zone input[type="file"] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+  .upload-zone.has-file { border-color: #10B981; background: #F0FDF4; border-style: solid; }
+  .file-preview {
+    display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+    background: #F8FAFC; border-radius: 10px; border: 1.5px solid #E2E8F0; margin-top: 8px;
+  }
+  .file-icon { width: 36px; height: 36px; border-radius: 8px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  .upload-progress { height: 4px; background: #E2E8F0; border-radius: 2px; margin-top: 6px; overflow: hidden; }
+  .upload-progress-bar {
+    height: 100%; background: linear-gradient(90deg,#0EA5E9,#38BDF8);
+    border-radius: 2px; transition: width 0.3s; width: 0%;
+  }
+
   @media print {
     .sidebar, .no-print, #tab-dasbor, #tab-filter, .print-hide { display: none !important; }
     .main-content { margin-left: 0 !important; }
@@ -939,12 +962,136 @@
       </div>
       <div class="flex justify-between">
         <button class="btn-secondary" onclick="formBack()">← Kembali</button>
-        <button class="btn-primary" onclick="formNext()">Lanjut → Dokumen & Lainnya</button>
+        <button class="btn-primary" onclick="formNext()">Lanjut → Sertifikasi</button>
       </div>
     </div>
 
-    <!-- Step 4: Data Tambahan -->
+    <!-- Step 4: Sertifikasi & Pelatihan — BARU -->
     <div id="form-step-4" class="hidden">
+      <div class="card p-6 mb-4">
+        <div class="flex items-start justify-between mb-5">
+          <div>
+            <div class="form-section-title mb-1">Sertifikasi &amp; Pelatihan</div>
+            <p class="text-xs text-slate-400">Sertifikasi guru, pelatihan, workshop yang pernah diikuti</p>
+          </div>
+        </div>
+        <div id="sertifikasi-list" class="space-y-3 mb-4"></div>
+        <button class="btn-add-row" onclick="addSertifikasiRow()">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          Tambah Sertifikasi / Pelatihan
+        </button>
+      </div>
+      <div class="flex justify-between">
+        <button class="btn-secondary" onclick="formBack()">← Kembali</button>
+        <button class="btn-primary" onclick="formNext()">Lanjut → Upload Dokumen</button>
+      </div>
+    </div>
+
+    <!-- Step 5: Upload Dokumen — BARU -->
+    <div id="form-step-5" class="hidden">
+      <div class="card p-6 mb-4">
+        <div class="form-section-title mb-1">Upload Dokumen</div>
+        <p class="text-xs text-slate-400 mb-1">File akan disimpan ke Google Drive Yayasan Ar-Rahmah secara aman.</p>
+        <div class="mb-5 p-3 rounded-lg flex items-center gap-2 text-xs" style="background:#F0F9FF;border:1px solid #BAE6FD;color:#0369A1">
+          <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          Format: JPG, PNG, atau PDF. Ukuran maksimal per file: <strong>5 MB</strong>. Semua dokumen bersifat rahasia.
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5" id="upload-grid">
+
+          <!-- Pas Foto -->
+          <div>
+            <label class="form-label">Pas Foto Terbaru</label>
+            <div class="upload-zone" id="zone-foto" ondragover="onDragOver(event,'zone-foto')" ondragleave="onDragLeave('zone-foto')" ondrop="onDrop(event,'zone-foto','file-foto')">
+              <input type="file" id="file-foto" accept="image/*" onchange="onFileSelect(this,'zone-foto','preview-foto','prog-foto')" />
+              <div id="preview-foto">
+                <div class="text-3xl mb-1">🤳</div>
+                <div class="text-sm font-medium text-slate-600">Klik atau seret file ke sini</div>
+                <div class="text-xs text-slate-400 mt-0.5">JPG / PNG — maks 5 MB</div>
+              </div>
+              <div class="upload-progress mt-2"><div class="upload-progress-bar" id="prog-foto"></div></div>
+            </div>
+          </div>
+
+          <!-- KTP -->
+          <div>
+            <label class="form-label">Scan KTP</label>
+            <div class="upload-zone" id="zone-ktp" ondragover="onDragOver(event,'zone-ktp')" ondragleave="onDragLeave('zone-ktp')" ondrop="onDrop(event,'zone-ktp','file-ktp')">
+              <input type="file" id="file-ktp" accept="image/*,application/pdf" onchange="onFileSelect(this,'zone-ktp','preview-ktp','prog-ktp')" />
+              <div id="preview-ktp">
+                <div class="text-3xl mb-1">🪪</div>
+                <div class="text-sm font-medium text-slate-600">Klik atau seret file ke sini</div>
+                <div class="text-xs text-slate-400 mt-0.5">JPG / PNG / PDF — maks 5 MB</div>
+              </div>
+              <div class="upload-progress mt-2"><div class="upload-progress-bar" id="prog-ktp"></div></div>
+            </div>
+          </div>
+
+          <!-- Ijazah Terakhir -->
+          <div>
+            <label class="form-label">Scan Ijazah Terakhir</label>
+            <div class="upload-zone" id="zone-ijazah" ondragover="onDragOver(event,'zone-ijazah')" ondragleave="onDragLeave('zone-ijazah')" ondrop="onDrop(event,'zone-ijazah','file-ijazah')">
+              <input type="file" id="file-ijazah" accept="image/*,application/pdf" onchange="onFileSelect(this,'zone-ijazah','preview-ijazah','prog-ijazah')" />
+              <div id="preview-ijazah">
+                <div class="text-3xl mb-1">🎓</div>
+                <div class="text-sm font-medium text-slate-600">Klik atau seret file ke sini</div>
+                <div class="text-xs text-slate-400 mt-0.5">JPG / PNG / PDF — maks 5 MB</div>
+              </div>
+              <div class="upload-progress mt-2"><div class="upload-progress-bar" id="prog-ijazah"></div></div>
+            </div>
+          </div>
+
+          <!-- SK Pengangkatan -->
+          <div>
+            <label class="form-label">SK Pengangkatan</label>
+            <div class="upload-zone" id="zone-sk" ondragover="onDragOver(event,'zone-sk')" ondragleave="onDragLeave('zone-sk')" ondrop="onDrop(event,'zone-sk','file-sk')">
+              <input type="file" id="file-sk" accept="image/*,application/pdf" onchange="onFileSelect(this,'zone-sk','preview-sk','prog-sk')" />
+              <div id="preview-sk">
+                <div class="text-3xl mb-1">📄</div>
+                <div class="text-sm font-medium text-slate-600">Klik atau seret file ke sini</div>
+                <div class="text-xs text-slate-400 mt-0.5">JPG / PNG / PDF — maks 5 MB</div>
+              </div>
+              <div class="upload-progress mt-2"><div class="upload-progress-bar" id="prog-sk"></div></div>
+            </div>
+          </div>
+
+          <!-- Sertifikat Pelatihan -->
+          <div>
+            <label class="form-label">Sertifikat Pelatihan</label>
+            <div class="upload-zone" id="zone-sertif" ondragover="onDragOver(event,'zone-sertif')" ondragleave="onDragLeave('zone-sertif')" ondrop="onDrop(event,'zone-sertif','file-sertif')">
+              <input type="file" id="file-sertif" accept="image/*,application/pdf" multiple onchange="onFileSelect(this,'zone-sertif','preview-sertif','prog-sertif')" />
+              <div id="preview-sertif">
+                <div class="text-3xl mb-1">📜</div>
+                <div class="text-sm font-medium text-slate-600">Klik atau seret file ke sini</div>
+                <div class="text-xs text-slate-400 mt-0.5">Bisa pilih beberapa file — JPG / PDF</div>
+              </div>
+              <div class="upload-progress mt-2"><div class="upload-progress-bar" id="prog-sertif"></div></div>
+            </div>
+          </div>
+
+          <!-- NPWP & BPJS -->
+          <div>
+            <label class="form-label">Scan NPWP &amp; Kartu BPJS</label>
+            <div class="upload-zone" id="zone-npwp" ondragover="onDragOver(event,'zone-npwp')" ondragleave="onDragLeave('zone-npwp')" ondrop="onDrop(event,'zone-npwp','file-npwp')">
+              <input type="file" id="file-npwp" accept="image/*,application/pdf" multiple onchange="onFileSelect(this,'zone-npwp','preview-npwp','prog-npwp')" />
+              <div id="preview-npwp">
+                <div class="text-3xl mb-1">💳</div>
+                <div class="text-sm font-medium text-slate-600">Klik atau seret file ke sini</div>
+                <div class="text-xs text-slate-400 mt-0.5">Bisa beberapa file — JPG / PDF</div>
+              </div>
+              <div class="upload-progress mt-2"><div class="upload-progress-bar" id="prog-npwp"></div></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      <div class="flex justify-between">
+        <button class="btn-secondary" onclick="formBack()">← Kembali</button>
+        <button class="btn-primary" onclick="formNext()">Lanjut → Dokumen &amp; Lainnya</button>
+      </div>
+    </div>
+
+    <!-- Step 6: Data Tambahan (was step 4) -->
+    <div id="form-step-6" class="hidden">
       <div class="card p-6 mb-4">
         <div class="form-section-title mb-1">Informasi Tambahan</div>
         <p class="text-xs text-slate-400 mb-5">Nomor dokumen penting dan catatan lain</p>
@@ -986,12 +1133,12 @@
       </div>
       <div class="flex justify-between">
         <button class="btn-secondary" onclick="formBack()">← Kembali</button>
-        <button class="btn-primary" onclick="formNext()">Lanjut → Periksa & Kirim</button>
+        <button class="btn-primary" onclick="formNext()">Lanjut → Periksa &amp; Kirim</button>
       </div>
     </div>
 
-    <!-- Step 5: Review & Submit -->
-    <div id="form-step-5" class="hidden">
+    <!-- Step 7: Review & Submit (was step 5) -->
+    <div id="form-step-7" class="hidden">
       <div class="card p-6 mb-4">
         <div class="form-section-title mb-1">Periksa Data Sebelum Mengirim</div>
         <p class="text-xs text-slate-400 mb-5">Pastikan semua informasi sudah benar. Data akan masuk ke antrian persetujuan admin.</p>
@@ -1013,8 +1160,8 @@
       </div>
     </div>
 
-    <!-- Step 6: Success -->
-    <div id="form-step-6" class="hidden">
+    <!-- Step 8: Success (was step 6) -->
+    <div id="form-step-8" class="hidden">
       <div class="card p-12 text-center">
         <div class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-5" style="background:#D1FAE5">
           <svg class="w-10 h-10" style="color:#059669" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
@@ -1717,42 +1864,40 @@ function escHtml(str) {
 }
 
 // ============================================================
-// FORM: STEP STATE
+// FORM: STEP STATE  (0=Identitas 1=Pribadi 2=Pendidikan 3=Keluarga
+//                    4=Sertifikasi 5=Upload 6=Lainnya 7=Review 8=Sukses)
 // ============================================================
 let formStep = 0;
-const FORM_STEPS = [
-  { label: "Identitas" },
-  { label: "Data Pribadi" },
-  { label: "Pendidikan" },
-  { label: "Keluarga" },
-  { label: "Lainnya" },
-  { label: "Kirim" },
-];
+const FORM_STEP_LABELS = ["Identitas","Data Pribadi","Pendidikan","Keluarga","Sertifikasi","Dokumen","Lainnya","Kirim"];
 let formSelectedPegawai = null;
+
+// Cache file base64 per slot
+const uploadedFiles = {};  // { foto: {name,type,base64,size}, ktp: {...}, ... }
 
 function initForm() {
   formStep = 0;
   formSelectedPegawai = null;
+  Object.keys(uploadedFiles).forEach(k => delete uploadedFiles[k]);
   renderStepIndicator();
   showFormStep(0);
-  // Reset semua field
   ["f-nama","f-tempat-lahir","f-hp","f-email","f-alamat","f-nik","f-npwp","f-bpjs-kes","f-bpjs-tk","f-rekening","f-catatan"].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = "";
+    const el = document.getElementById(id); if (el) el.value = "";
   });
   ["f-jenis-kelamin","f-gol-darah","f-status-nikah","f-bank"].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = "";
+    const el = document.getElementById(id); if (el) el.value = "";
   });
   document.getElementById("f-tanggal-lahir").value = "";
   document.getElementById("pendidikan-list").innerHTML = "";
   document.getElementById("keluarga-list").innerHTML = "";
+  document.getElementById("sertifikasi-list").innerHTML = "";
+  // Reset upload zones
+  ["foto","ktp","ijazah","sk","sertif","npwp"].forEach(resetUploadZone);
   document.getElementById("form-search-nama").value = "";
   document.getElementById("form-selected-info").classList.add("hidden");
 }
 
 function renderStepIndicator() {
-  const labels = ["Identitas","Data Pribadi","Pendidikan","Keluarga","Lainnya","Kirim"];
+  const labels = FORM_STEP_LABELS;
   const container = document.getElementById("step-indicator");
   container.innerHTML = labels.map((label, i) => {
     const state = i < formStep ? "done" : i === formStep ? "active" : "pending";
@@ -1773,13 +1918,13 @@ function renderStepIndicator() {
 }
 
 function showFormStep(step) {
-  for (let i = 0; i <= 6; i++) {
+  for (let i = 0; i <= 8; i++) {
     const el = document.getElementById("form-step-" + i);
     if (el) el.classList.add("hidden");
   }
   const target = document.getElementById("form-step-" + step);
   if (target) { target.classList.remove("hidden"); target.classList.add("fade-in"); }
-  if (step === 5) buildReview();
+  if (step === 7) buildReview();
   renderStepIndicator();
 }
 
@@ -1788,7 +1933,7 @@ function formNext() {
     showToast("Pilih nama Anda terlebih dahulu", "error"); return;
   }
   if (formStep === 1 && !validateStep1()) return;
-  if (formStep < 5) {
+  if (formStep < 7) {
     formStep++;
     showFormStep(formStep);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -1974,6 +2119,176 @@ function removeRow(id) {
 }
 
 // ============================================================
+// FORM: DYNAMIC ROWS — SERTIFIKASI
+// ============================================================
+let sertifikasiRowCount = 0;
+
+function addSertifikasiRow(data = {}) {
+  sertifikasiRowCount++;
+  const id = "sert-" + sertifikasiRowCount;
+  const div = document.createElement("div");
+  div.className = "dynamic-row";
+  div.id = id;
+  div.innerHTML = `
+    <button class="btn-remove-row" onclick="removeRow('${id}')" title="Hapus">×</button>
+    <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+      <div class="md:col-span-2">
+        <label class="form-label">Nama Sertifikasi / Pelatihan <span class="req">*</span></label>
+        <input type="text" class="form-input sert-nama" placeholder="Contoh: Sertifikasi Pendidik, Pelatihan Kurikulum Merdeka" value="${data.nama||""}" />
+      </div>
+      <div>
+        <label class="form-label">Jenis</label>
+        <select class="form-input sert-jenis">
+          <option value="">-- Pilih --</option>
+          ${["Sertifikasi Guru (Serdik)","Sertifikasi Kompetensi","Pelatihan / Workshop","Seminar","Diklat","Lainnya"].map(j =>
+            `<option ${data.jenis===j?"selected":""}>${j}</option>`).join("")}
+        </select>
+      </div>
+      <div>
+        <label class="form-label">No. Sertifikat</label>
+        <input type="text" class="form-input sert-nomor" placeholder="Nomor sertifikat" value="${data.nomor||""}" />
+      </div>
+      <div>
+        <label class="form-label">Lembaga Penerbit</label>
+        <input type="text" class="form-input sert-lembaga" placeholder="Kemdikbud, LP3I, dll" value="${data.lembaga||""}" />
+      </div>
+      <div>
+        <label class="form-label">Bidang Studi / Mapel</label>
+        <input type="text" class="form-input sert-bidang" placeholder="Matematika, PAI, B. Indonesia" value="${data.bidang||""}" />
+      </div>
+      <div>
+        <label class="form-label">Tanggal Terbit</label>
+        <input type="date" class="form-input sert-tgl-terbit" value="${data.tgl_terbit||""}" />
+      </div>
+      <div>
+        <label class="form-label">Tanggal Kadaluarsa</label>
+        <input type="date" class="form-input sert-tgl-exp" value="${data.tgl_exp||""}" />
+        <div class="text-xs text-slate-400 mt-1">Kosongkan jika tidak ada kadaluarsa</div>
+      </div>
+      <div>
+        <label class="form-label">Tahun Lulus Serdik</label>
+        <input type="number" class="form-input sert-thn-serdik" placeholder="2019" min="1990" max="2030" value="${data.thn_serdik||""}" />
+      </div>
+    </div>`;
+  document.getElementById("sertifikasi-list").appendChild(div);
+}
+
+// ============================================================
+// FORM: FILE UPLOAD HANDLERS
+// ============================================================
+const FILE_SLOTS = {
+  foto:   { label: "Pas Foto",         emoji: "🤳", accept: "image/*" },
+  ktp:    { label: "Scan KTP",         emoji: "🪪", accept: "image/*,application/pdf" },
+  ijazah: { label: "Scan Ijazah",      emoji: "🎓", accept: "image/*,application/pdf" },
+  sk:     { label: "SK Pengangkatan",  emoji: "📄", accept: "image/*,application/pdf" },
+  sertif: { label: "Sertifikat",       emoji: "📜", accept: "image/*,application/pdf" },
+  npwp:   { label: "NPWP & BPJS",      emoji: "💳", accept: "image/*,application/pdf" },
+};
+
+function onDragOver(e, zoneId) {
+  e.preventDefault();
+  document.getElementById(zoneId)?.classList.add("dragover");
+}
+function onDragLeave(zoneId) {
+  document.getElementById(zoneId)?.classList.remove("dragover");
+}
+function onDrop(e, zoneId, fileInputId) {
+  e.preventDefault();
+  onDragLeave(zoneId);
+  const input = document.getElementById(fileInputId);
+  if (input && e.dataTransfer.files.length) {
+    // Simulate file input change
+    const dt = new DataTransfer();
+    Array.from(e.dataTransfer.files).forEach(f => dt.items.add(f));
+    input.files = dt.files;
+    input.dispatchEvent(new Event("change"));
+  }
+}
+
+function onFileSelect(input, zoneId, previewId, progId) {
+  const files = Array.from(input.files);
+  if (!files.length) return;
+
+  // Validasi ukuran (maks 5MB per file)
+  const tooLarge = files.filter(f => f.size > 5 * 1024 * 1024);
+  if (tooLarge.length) {
+    showToast(`File "${tooLarge[0].name}" melebihi 5 MB`, "error");
+    input.value = "";
+    return;
+  }
+
+  const slotKey = zoneId.replace("zone-", "");
+  const zone    = document.getElementById(zoneId);
+  const preview = document.getElementById(previewId);
+  const prog    = document.getElementById(progId);
+
+  // Animasi progress bar
+  prog.style.width = "0%";
+  let pct = 0;
+  const interval = setInterval(() => {
+    pct = Math.min(pct + 15, 90);
+    prog.style.width = pct + "%";
+  }, 80);
+
+  // Baca semua file sebagai base64
+  Promise.all(files.map(f => fileToBase64(f))).then(results => {
+    clearInterval(interval);
+    prog.style.width = "100%";
+    zone.classList.add("has-file");
+
+    // Simpan ke cache
+    uploadedFiles[slotKey] = results.map((b64, i) => ({
+      name:   files[i].name,
+      type:   files[i].type,
+      size:   files[i].size,
+      base64: b64,
+    }));
+
+    // Update preview
+    const emoji = FILE_SLOTS[slotKey]?.emoji || "📎";
+    preview.innerHTML = results.map((_, i) => `
+      <div class="file-preview">
+        <div class="file-icon" style="background:#E0F2FE">${emoji}</div>
+        <div class="flex-1 min-w-0">
+          <div class="text-sm font-medium text-slate-800 truncate">${files[i].name}</div>
+          <div class="text-xs text-emerald-600 font-semibold">✓ Siap diupload · ${(files[i].size/1024).toFixed(0)} KB</div>
+        </div>
+        <button onclick="resetUploadZone('${slotKey}')" class="text-slate-400 hover:text-rose-500 text-lg leading-none flex-shrink-0">×</button>
+      </div>`).join("");
+
+    setTimeout(() => { prog.style.width = "0%"; }, 800);
+  });
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = () => resolve(reader.result.split(",")[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function resetUploadZone(slotKey) {
+  delete uploadedFiles[slotKey];
+  const zoneId   = "zone-" + slotKey;
+  const previewId= "preview-" + slotKey;
+  const fileId   = "file-" + slotKey;
+  const progId   = "prog-" + slotKey;
+  const slot     = FILE_SLOTS[slotKey] || { emoji: "📎", label: "File" };
+
+  document.getElementById(zoneId)?.classList.remove("has-file","dragover");
+  document.getElementById(progId && progId)?.style && (document.getElementById(progId).style.width = "0%");
+  const prev = document.getElementById(previewId);
+  if (prev) prev.innerHTML = `
+    <div class="text-3xl mb-1">${slot.emoji}</div>
+    <div class="text-sm font-medium text-slate-600">Klik atau seret file ke sini</div>
+    <div class="text-xs text-slate-400 mt-0.5">JPG / PNG / PDF — maks 5 MB</div>`;
+  const inp = document.getElementById(fileId);
+  if (inp) inp.value = "";
+}
+
+// ============================================================
 // FORM: COLLECT DATA
 // ============================================================
 function collectFormData() {
@@ -2012,11 +2327,34 @@ function collectFormData() {
     }
   });
 
+  // Sertifikasi rows
+  const sertifikasiRows = [];
+  document.querySelectorAll("#sertifikasi-list .dynamic-row").forEach(row => {
+    const namaS = row.querySelector(".sert-nama")?.value;
+    if (namaS) {
+      sertifikasiRows.push({
+        nama:       namaS,
+        jenis:      row.querySelector(".sert-jenis")?.value      || "",
+        nomor:      row.querySelector(".sert-nomor")?.value      || "",
+        lembaga:    row.querySelector(".sert-lembaga")?.value    || "",
+        bidang:     row.querySelector(".sert-bidang")?.value     || "",
+        tgl_terbit: row.querySelector(".sert-tgl-terbit")?.value || "",
+        tgl_exp:    row.querySelector(".sert-tgl-exp")?.value    || "",
+        thn_serdik: row.querySelector(".sert-thn-serdik")?.value || "",
+      });
+    }
+  });
+
+  // Files — hanya meta (base64 dikirim terpisah saat submit)
+  const filesMeta = {};
+  Object.entries(uploadedFiles).forEach(([key, arr]) => {
+    filesMeta[key] = arr.map(f => ({ name: f.name, type: f.type, size: f.size }));
+  });
+
   return {
     nama,
-    niy:               formSelectedPegawai?.niy || "",
+    niy:               formSelectedPegawai?.niy  || "",
     unit:              formSelectedPegawai?.unit || "",
-    // Data Pribadi
     tempat_lahir:      document.getElementById("f-tempat-lahir")?.value  || "",
     tanggal_lahir:     document.getElementById("f-tanggal-lahir")?.value  || "",
     jenis_kelamin:     document.getElementById("f-jenis-kelamin")?.value  || "",
@@ -2025,7 +2363,6 @@ function collectFormData() {
     no_hp:             document.getElementById("f-hp")?.value             || "",
     email:             document.getElementById("f-email")?.value          || "",
     alamat:            document.getElementById("f-alamat")?.value         || "",
-    // Dokumen
     nik:               document.getElementById("f-nik")?.value            || "",
     npwp:              document.getElementById("f-npwp")?.value           || "",
     bpjs_kes:          document.getElementById("f-bpjs-kes")?.value       || "",
@@ -2033,10 +2370,10 @@ function collectFormData() {
     rekening:          document.getElementById("f-rekening")?.value       || "",
     bank:              document.getElementById("f-bank")?.value           || "",
     catatan:           document.getElementById("f-catatan")?.value        || "",
-    // Relational
     pendidikan:        pendidikanRows,
     keluarga:          keluargaRows,
-    // Meta
+    sertifikasi:       sertifikasiRows,
+    files_meta:        filesMeta,
     submitted_at:      new Date().toISOString(),
     status:            "Pending",
   };
@@ -2049,15 +2386,10 @@ function buildReview() {
   const d = collectFormData();
   const reviewEl = document.getElementById("review-content");
 
-  const row = (label, val) => val
-    ? `<div class="flex gap-3 py-1.5 border-b border-slate-50">
-         <div class="text-xs text-slate-400 w-32 flex-shrink-0 pt-0.5">${label}</div>
-         <div class="text-sm text-slate-800 font-medium">${val}</div>
-       </div>` : "";
-
-  const section = (title, content) => `
+  const row     = (l, v) => v ? `<div class="flex gap-3 py-1.5 border-b border-slate-50 last:border-0"><div class="text-xs text-slate-400 w-32 flex-shrink-0 pt-0.5">${l}</div><div class="text-sm text-slate-800 font-medium">${v}</div></div>` : "";
+  const section = (title, content, icon) => `
     <div class="rounded-xl border border-slate-100 overflow-hidden">
-      <div class="px-4 py-2.5 font-semibold text-xs uppercase tracking-wider text-slate-500" style="background:#F8FAFC">${title}</div>
+      <div class="px-4 py-2.5 font-semibold text-xs uppercase tracking-wider text-slate-500 flex items-center gap-2" style="background:#F8FAFC">${icon||""} ${title}</div>
       <div class="px-4 py-2">${content}</div>
     </div>`;
 
@@ -2079,26 +2411,41 @@ function buildReview() {
   const pendRows = d.pendidikan.map(p =>
     `<div class="py-2 border-b border-slate-50 last:border-0">
        <span class="badge badge-sky text-xs">${p.jenjang}</span>
-       <span class="ml-2 text-sm font-medium text-slate-800">${p.institusi}</span>
+       <span class="ml-2 text-sm font-medium">${p.institusi}</span>
        ${p.jurusan ? `<span class="text-slate-400 text-xs"> · ${p.jurusan}</span>` : ""}
-       ${p.gelar ? `<span class="ml-1 text-xs font-semibold text-sky-700">${p.gelar}</span>` : ""}
-       <div class="text-xs text-slate-400 mt-0.5">${[p.thn_masuk, p.thn_lulus].filter(Boolean).join(" – ")}</div>
-     </div>`).join("") || "<p class='text-slate-400 text-sm py-2'>Tidak ada data pendidikan</p>";
+       ${p.gelar ? `<span class="ml-1 text-xs font-bold text-sky-700">${p.gelar}</span>` : ""}
+     </div>`).join("") || "<p class='text-slate-400 text-sm py-2'>Tidak ada</p>";
 
   const kelRows = d.keluarga.map(k =>
-    `<div class="py-2 border-b border-slate-50 last:border-0 flex items-start gap-3">
-       <span class="badge badge-sky text-xs flex-shrink-0 mt-0.5">${k.hubungan}</span>
-       <div>
-         <div class="text-sm font-medium text-slate-800">${k.nama_anggota}</div>
-         <div class="text-xs text-slate-400">${[k.tempat_lahir, k.tanggal_lahir ? formatDate(k.tanggal_lahir) : ""].filter(Boolean).join(", ")}</div>
-       </div>
-     </div>`).join("") || "<p class='text-slate-400 text-sm py-2'>Tidak ada data keluarga</p>";
+    `<div class="py-2 border-b border-slate-50 last:border-0 flex gap-3">
+       <span class="badge badge-sky text-xs flex-shrink-0">${k.hubungan}</span>
+       <div><div class="text-sm font-medium">${k.nama_anggota}</div>
+       <div class="text-xs text-slate-400">${[k.tempat_lahir, k.tanggal_lahir?formatDate(k.tanggal_lahir):""].filter(Boolean).join(", ")}</div></div>
+     </div>`).join("") || "<p class='text-slate-400 text-sm py-2'>Tidak ada</p>";
+
+  const sertRows = d.sertifikasi.map(s =>
+    `<div class="py-2 border-b border-slate-50 last:border-0">
+       <span class="badge badge-gold text-xs">${s.jenis||"Sertifikasi"}</span>
+       <span class="ml-2 text-sm font-medium">${s.nama}</span>
+       ${s.lembaga ? `<span class="text-slate-400 text-xs"> · ${s.lembaga}</span>` : ""}
+       ${s.nomor ? `<div class="text-xs text-slate-400 mt-0.5">No: ${s.nomor}</div>` : ""}
+     </div>`).join("") || "<p class='text-slate-400 text-sm py-2'>Tidak ada sertifikasi</p>";
+
+  const fileRows = Object.entries(d.files_meta).map(([key, arr]) =>
+    arr.map(f => `<div class="py-1.5 border-b border-slate-50 last:border-0 flex items-center gap-2">
+      <span class="text-lg">${FILE_SLOTS[key]?.emoji||"📎"}</span>
+      <div><div class="text-sm font-medium text-slate-800">${f.name}</div>
+      <div class="text-xs text-emerald-600">✓ ${FILE_SLOTS[key]?.label||key} · ${(f.size/1024).toFixed(0)} KB</div></div>
+    </div>`).join("")
+  ).join("") || "<p class='text-slate-400 text-sm py-2'>Tidak ada file diupload</p>";
 
   reviewEl.innerHTML = [
-    section("Data Pribadi", pribadi),
-    section("Riwayat Pendidikan (" + d.pendidikan.length + " entri)", pendRows),
-    section("Data Keluarga (" + d.keluarga.length + " anggota)", kelRows),
-    section("Dokumen & Lainnya", dokumen),
+    section("Data Pribadi", pribadi, "👤"),
+    section(`Riwayat Pendidikan (${d.pendidikan.length})`, pendRows, "🎓"),
+    section(`Data Keluarga (${d.keluarga.length})`, kelRows, "🏠"),
+    section(`Sertifikasi & Pelatihan (${d.sertifikasi.length})`, sertRows, "📜"),
+    section("Dokumen Diupload", fileRows, "📁"),
+    section("Dokumen & Lainnya", dokumen, "📋"),
   ].join("");
 }
 
@@ -2111,31 +2458,64 @@ async function submitForm() {
   btn.innerHTML = '<div class="spinner" style="width:18px;height:18px;border-width:2px"></div> Mengirim...';
 
   const payload = collectFormData();
+  payload.id    = "PND-" + Date.now();
 
-  // Simpan ke localStorage sebagai pending (mode demo / backup)
+  // ── Upload file ke Google Drive terlebih dahulu ──────────
+  const driveLinks = {};
+  const hasFiles   = Object.keys(uploadedFiles).length > 0;
+
+  if (hasFiles && API_URL && !API_URL.includes("GANTI_DENGAN")) {
+    btn.innerHTML = '<div class="spinner" style="width:18px;height:18px;border-width:2px"></div> Mengupload dokumen...';
+    for (const [slot, files] of Object.entries(uploadedFiles)) {
+      driveLinks[slot] = [];
+      for (const file of files) {
+        try {
+          const resp = await fetch(API_URL, {
+            method:  "POST",
+            headers: { "Content-Type": "application/json" },
+            body:    JSON.stringify({
+              action:   "uploadFile",
+              nama:     payload.nama,
+              slot,
+              fileName: file.name,
+              mimeType: file.type,
+              base64:   file.base64,
+            })
+          });
+          const json = await resp.json();
+          if (json.status === "ok") driveLinks[slot].push(json.link);
+        } catch(e) {
+          console.warn("Upload file gagal:", slot, e.message);
+        }
+      }
+    }
+  }
+  payload.drive_links = driveLinks;
+
+  // ── Simpan ke localStorage sebagai backup ───────────────
   const existing = JSON.parse(localStorage.getItem("hris_pending") || "[]");
-  payload.id = "PND-" + Date.now();
   existing.push(payload);
   localStorage.setItem("hris_pending", JSON.stringify(existing));
 
-  // Coba kirim ke Apps Script jika API URL tersedia
+  // ── Kirim payload utama ke Apps Script ──────────────────
   if (API_URL && !API_URL.includes("GANTI_DENGAN")) {
+    btn.innerHTML = '<div class="spinner" style="width:18px;height:18px;border-width:2px"></div> Menyimpan data...';
     try {
       await fetch(API_URL, {
-        method: "POST",
-        mode:   "no-cors",
+        method:  "POST",
+        mode:    "no-cors",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "submitPending", data: payload })
+        body:    JSON.stringify({ action: "submitPending", data: payload })
       });
     } catch(e) {
       console.warn("POST ke API gagal, data tersimpan lokal:", e.message);
     }
   }
 
-  // Tampilkan success
-  await new Promise(r => setTimeout(r, 600));
-  formStep = 6;
-  showFormStep(6);
+  await new Promise(r => setTimeout(r, 500));
+
+  formStep = 8;
+  showFormStep(8);
   document.getElementById("success-nama").textContent = payload.nama;
   updatePendingBadge();
 
