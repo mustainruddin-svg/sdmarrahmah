@@ -1,0 +1,2355 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>HRIS Executive Dashboard — Yayasan Ar-Rahmah</title>
+
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<!-- Google Fonts: Playfair Display + DM Sans -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          display: ["Playfair Display", "serif"],
+          body:    ["DM Sans", "sans-serif"],
+        },
+        colors: {
+          sky:  { DEFAULT: "#0EA5E9", 50: "#F0F9FF", 100: "#E0F2FE", 500: "#0EA5E9", 600: "#0284C7", 700: "#0369A1" },
+          gold: { DEFAULT: "#D97706", 50: "#FFFBEB", 100: "#FEF3C7", 300: "#FCD34D", 400: "#FBBF24", 500: "#D97706", 600: "#B45309" },
+          ink:  { DEFAULT: "#0F172A", 50: "#F8FAFC", 100: "#F1F5F9", 200: "#E2E8F0", 300: "#CBD5E1", 400: "#94A3B8", 500: "#64748B", 600: "#475569", 700: "#334155", 800: "#1E293B", 900: "#0F172A" },
+        }
+      }
+    }
+  };
+</script>
+
+<style>
+  /* ============ GLOBAL ============ */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: "DM Sans", sans-serif;
+    background: #F1F5F9;
+    color: #0F172A;
+    overflow-x: hidden;
+  }
+
+  /* ============ LAYOUT ============ */
+  .sidebar {
+    width: 260px; min-height: 100vh;
+    background: linear-gradient(160deg, #0F172A 0%, #1E293B 100%);
+    position: fixed; top: 0; left: 0; z-index: 100;
+    display: flex; flex-direction: column;
+    border-right: 1px solid rgba(255,255,255,0.07);
+    transition: transform 0.3s ease;
+  }
+  .main-content {
+    margin-left: 260px;
+    min-height: 100vh;
+    transition: margin 0.3s ease;
+  }
+
+  /* ============ SIDEBAR NAV ============ */
+  .nav-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 11px 20px; border-radius: 10px; margin: 3px 12px;
+    color: #94A3B8; font-size: 14px; font-weight: 500;
+    cursor: pointer; transition: all 0.2s ease;
+    text-decoration: none; border: 1px solid transparent;
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.06); color: #E2E8F0; }
+  .nav-item.active {
+    background: linear-gradient(135deg, rgba(14,165,233,0.25), rgba(14,165,233,0.1));
+    color: #38BDF8; border-color: rgba(14,165,233,0.3);
+  }
+  .nav-item.active .nav-icon { color: #38BDF8; }
+  .nav-icon { width: 18px; height: 18px; flex-shrink: 0; }
+
+  /* ============ CARDS ============ */
+  .card {
+    background: white; border-radius: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+    border: 1px solid #E2E8F0;
+    transition: box-shadow 0.2s ease;
+  }
+  .card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.09); }
+
+  .scorecard {
+    background: white; border-radius: 14px; padding: 22px 24px;
+    border: 1px solid #E2E8F0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    transition: all 0.2s ease; overflow: hidden; position: relative;
+  }
+  .scorecard::before {
+    content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  }
+  .scorecard.sky::before   { background: linear-gradient(90deg, #0EA5E9, #38BDF8); }
+  .scorecard.gold::before  { background: linear-gradient(90deg, #D97706, #FBBF24); }
+  .scorecard.green::before { background: linear-gradient(90deg, #059669, #34D399); }
+  .scorecard.violet::before{ background: linear-gradient(90deg, #7C3AED, #A78BFA); }
+  .scorecard.rose::before  { background: linear-gradient(90deg, #E11D48, #FB7185); }
+  .scorecard:hover { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(0,0,0,0.08); }
+
+  /* ============ TABLE ============ */
+  .data-table { width: 100%; border-collapse: collapse; }
+  .data-table th {
+    background: #F8FAFC; color: #475569; font-size: 11px;
+    font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
+    padding: 10px 16px; text-align: left; border-bottom: 2px solid #E2E8F0;
+    position: sticky; top: 0; z-index: 10;
+  }
+  .data-table td {
+    padding: 11px 16px; font-size: 13.5px; color: #334155;
+    border-bottom: 1px solid #F1F5F9; vertical-align: middle;
+  }
+  .data-table tr:last-child td { border-bottom: none; }
+  .data-table tbody tr:hover { background: #F8FAFC; }
+
+  /* ============ BADGES ============ */
+  .badge {
+    display: inline-block; padding: 3px 10px; border-radius: 999px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.02em;
+  }
+  .badge-sky    { background: #E0F2FE; color: #0369A1; }
+  .badge-gold   { background: #FEF3C7; color: #92400E; }
+  .badge-green  { background: #D1FAE5; color: #065F46; }
+  .badge-violet { background: #EDE9FE; color: #5B21B6; }
+  .badge-rose   { background: #FFE4E6; color: #9F1239; }
+  .badge-slate  { background: #F1F5F9; color: #475569; }
+  .badge-gray   { background: #F3F4F6; color: #374151; }
+
+  /* ============ FILTER PANEL ============ */
+  .filter-select {
+    width: 100%; padding: 10px 14px; border-radius: 10px;
+    border: 1.5px solid #E2E8F0; font-size: 13.5px; font-family: "DM Sans", sans-serif;
+    background: white; color: #334155; outline: none;
+    transition: border-color 0.2s; appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394A3B8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 12px center; background-size: 16px;
+    padding-right: 36px;
+  }
+  .filter-select:focus { border-color: #0EA5E9; box-shadow: 0 0 0 3px rgba(14,165,233,0.12); }
+
+  /* ============ PROFIL CARD ============ */
+  .profile-header {
+    background: linear-gradient(135deg, #0F172A 0%, #1E293B 60%, #0369A1 100%);
+    border-radius: 16px 16px 0 0; padding: 32px 36px; color: white; position: relative;
+    overflow: hidden;
+  }
+  .profile-header::after {
+    content: ""; position: absolute; top: -40px; right: -40px;
+    width: 200px; height: 200px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(14,165,233,0.25) 0%, transparent 70%);
+  }
+  .profile-avatar {
+    width: 72px; height: 72px; border-radius: 50%;
+    background: linear-gradient(135deg, #0EA5E9, #38BDF8);
+    display: flex; align-items: center; justify-content: center;
+    font-family: "Playfair Display", serif; font-size: 28px; color: white;
+    font-weight: 700; flex-shrink: 0; border: 3px solid rgba(255,255,255,0.25);
+  }
+
+  /* ============ SEARCH COMBOBOX ============ */
+  .search-input {
+    width: 100%; padding: 12px 16px; border-radius: 12px;
+    border: 2px solid #E2E8F0; font-size: 14px; font-family: "DM Sans", sans-serif;
+    outline: none; transition: all 0.2s; color: #0F172A; background: white;
+  }
+  .search-input:focus { border-color: #0EA5E9; box-shadow: 0 0 0 4px rgba(14,165,233,0.1); }
+  .dropdown-list {
+    position: absolute; top: 100%; left: 0; right: 0; z-index: 50;
+    background: white; border-radius: 12px; margin-top: 4px;
+    border: 1.5px solid #E2E8F0; box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+    max-height: 240px; overflow-y: auto;
+  }
+  .dropdown-item {
+    padding: 10px 16px; font-size: 13.5px; cursor: pointer; color: #334155;
+    transition: background 0.15s; border-bottom: 1px solid #F8FAFC;
+  }
+  .dropdown-item:last-child { border-bottom: none; }
+  .dropdown-item:hover { background: #F0F9FF; color: #0369A1; }
+
+  /* ============ LOADING ============ */
+  .skeleton {
+    background: linear-gradient(90deg, #E2E8F0 25%, #F1F5F9 50%, #E2E8F0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 8px;
+  }
+  @keyframes shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+  .spinner {
+    width: 40px; height: 40px; border: 3px solid #E2E8F0;
+    border-top-color: #0EA5E9; border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ============ CHART CONTAINERS ============ */
+  .chart-container { position: relative; }
+
+  /* ============ SCROLLBAR ============ */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: #F1F5F9; }
+  ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+
+  /* ============ FADE IN ============ */
+  .fade-in { animation: fadeIn 0.4s ease both; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ============ UNIT PILLS ============ */
+  .unit-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+
+  /* ============ FORM STYLES ============ */
+  .form-input {
+    width: 100%; padding: 10px 14px; border-radius: 10px;
+    border: 1.5px solid #E2E8F0; font-size: 13.5px;
+    font-family: "DM Sans", sans-serif; color: #0F172A;
+    background: white; outline: none; transition: all 0.2s;
+  }
+  .form-input:focus { border-color: #0EA5E9; box-shadow: 0 0 0 3px rgba(14,165,233,0.1); }
+  .form-input:disabled { background: #F8FAFC; color: #94A3B8; cursor: not-allowed; }
+  .form-label {
+    display: block; font-size: 12px; font-weight: 600;
+    color: #64748B; text-transform: uppercase; letter-spacing: 0.05em;
+    margin-bottom: 5px;
+  }
+  .form-label .req { color: #E11D48; margin-left: 2px; }
+  .form-section-title {
+    font-family: "Playfair Display", serif; font-size: 16px;
+    font-weight: 700; color: #0F172A; margin-bottom: 4px;
+  }
+
+  /* Step indicator */
+  .step-dot {
+    width: 32px; height: 32px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; transition: all 0.3s;
+    flex-shrink: 0;
+  }
+  .step-dot.done    { background: #0EA5E9; color: white; }
+  .step-dot.active  { background: #0F172A; color: white; box-shadow: 0 0 0 4px rgba(14,165,233,0.25); }
+  .step-dot.pending { background: #E2E8F0; color: #94A3B8; }
+  .step-line { flex: 1; height: 2px; background: #E2E8F0; transition: background 0.3s; }
+  .step-line.done { background: #0EA5E9; }
+
+  /* Dynamic list rows (keluarga/pendidikan) */
+  .dynamic-row {
+    background: #F8FAFC; border: 1.5px solid #E2E8F0;
+    border-radius: 12px; padding: 16px; position: relative;
+    transition: border-color 0.2s;
+  }
+  .dynamic-row:hover { border-color: #CBD5E1; }
+  .btn-remove-row {
+    position: absolute; top: 12px; right: 12px;
+    width: 26px; height: 26px; border-radius: 6px;
+    background: #FEE2E2; border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    color: #EF4444; font-size: 16px; line-height: 1;
+    transition: background 0.15s;
+  }
+  .btn-remove-row:hover { background: #FECACA; }
+  .btn-add-row {
+    display: flex; align-items: center; gap-8px; gap: 8px;
+    padding: 9px 16px; border-radius: 10px; border: 1.5px dashed #CBD5E1;
+    background: white; color: #64748B; font-size: 13px; font-weight: 500;
+    cursor: pointer; width: 100%; justify-content: center;
+    transition: all 0.2s; font-family: "DM Sans", sans-serif;
+  }
+  .btn-add-row:hover { border-color: #0EA5E9; color: #0EA5E9; background: #F0F9FF; }
+
+  /* Approval cards */
+  .approval-card {
+    background: white; border-radius: 14px; border: 1.5px solid #E2E8F0;
+    overflow: hidden; transition: box-shadow 0.2s;
+  }
+  .approval-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+  .approval-card.status-pending  { border-left: 4px solid #F59E0B; }
+  .approval-card.status-approved { border-left: 4px solid #10B981; }
+  .approval-card.status-rejected { border-left: 4px solid #EF4444; }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+    z-index: 9999; padding: 12px 24px; border-radius: 12px; font-size: 14px;
+    font-weight: 500; font-family: "DM Sans",sans-serif;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2); transition: transform 0.3s ease;
+    white-space: nowrap; display: flex; align-items: center; gap: 10px;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.success { background: #0F172A; color: white; }
+  .toast.error   { background: #991B1B; color: white; }
+  .toast.info    { background: #1E3A5F; color: white; }
+
+  /* Submit button */
+  .btn-primary {
+    padding: 12px 28px; border-radius: 12px; font-size: 14px; font-weight: 600;
+    font-family: "DM Sans",sans-serif; border: none; cursor: pointer;
+    background: linear-gradient(135deg, #0EA5E9, #0369A1);
+    color: white; transition: all 0.2s; display: inline-flex;
+    align-items: center; gap: 8px;
+  }
+  .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .btn-secondary {
+    padding: 11px 20px; border-radius: 12px; font-size: 14px; font-weight: 500;
+    font-family: "DM Sans",sans-serif; border: 1.5px solid #E2E8F0;
+    background: white; color: #475569; cursor: pointer; transition: all 0.2s;
+  }
+  .btn-secondary:hover { background: #F8FAFC; border-color: #CBD5E1; }
+
+  @media print {
+    .sidebar, .no-print, #tab-dasbor, #tab-filter, .print-hide { display: none !important; }
+    .main-content { margin-left: 0 !important; }
+    body { background: white !important; font-size: 12px; }
+    .card { box-shadow: none !important; border: 1px solid #ddd !important; page-break-inside: avoid; }
+    #tab-profil { display: block !important; }
+    .profile-header {
+      background: #0F172A !important; -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    .data-table th { background: #F1F5F9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .print-title {
+      display: block !important; text-align: center; font-size: 18px;
+      font-weight: 700; color: #0F172A; margin-bottom: 8px;
+      font-family: "Playfair Display", serif;
+    }
+    .print-subtitle { display: block !important; text-align: center; font-size: 12px; color: #64748B; margin-bottom: 24px; }
+    #profil-content { padding: 0 !important; }
+    .badge { border: 1px solid currentColor; }
+  }
+  .print-title, .print-subtitle { display: none; }
+</style>
+</head>
+<body>
+
+<!-- ===== SIDEBAR ===== -->
+<aside class="sidebar">
+  <!-- Logo -->
+  <div class="p-6 border-b border-white/10">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style="background:linear-gradient(135deg,#0EA5E9,#0369A1)">
+        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+        </svg>
+      </div>
+      <div>
+        <div class="text-white text-sm font-semibold leading-tight font-display">Yayasan Ar-Rahmah</div>
+        <div class="text-sky-400 text-xs mt-0.5 font-medium">HRIS Executive</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Nav -->
+  <nav class="flex-1 py-4 px-2">
+    <div class="text-xs text-ink-400 px-3 mb-2 font-semibold uppercase tracking-wider" style="color:#475569">Menu Utama</div>
+    <a class="nav-item active" onclick="showTab('dasbor')" href="#">
+      <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+      <span>Dasbor Eksekutif</span>
+    </a>
+    <a class="nav-item" onclick="showTab('filter')" href="#">
+      <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z"/></svg>
+      <span>Filter &amp; Data Pegawai</span>
+    </a>
+    <a class="nav-item" onclick="showTab('profil')" href="#">
+      <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+      <span>Profil Digital Pegawai</span>
+    </a>
+
+    <div class="text-xs px-3 mb-2 mt-4 font-semibold uppercase tracking-wider" style="color:#475569">Self-Service</div>
+    <a class="nav-item" onclick="showTab('form')" href="#">
+      <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+      <span>Isi / Perbarui Data</span>
+    </a>
+    <a class="nav-item" onclick="showTab('approval')" href="#">
+      <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7l2 2 4-4"/></svg>
+      <span>Approval Admin</span>
+      <span id="pending-badge" class="hidden ml-auto bg-amber-400 text-amber-900 text-xs font-bold px-2 py-0.5 rounded-full">0</span>
+    </a>
+  </nav>
+
+  <!-- Footer sidebar -->
+  <div class="p-4 border-t border-white/10">
+    <div class="text-xs text-slate-500 leading-relaxed">
+      HRIS v2.0 &bull; Makassar, Sulawesi Selatan<br/>
+      <span id="last-sync" class="text-slate-600">Memuat data...</span>
+    </div>
+  </div>
+</aside>
+
+<!-- ===== MAIN CONTENT ===== -->
+<main class="main-content">
+
+  <!-- Top Bar -->
+  <header class="bg-white border-b border-slate-200 px-8 py-4 flex items-center justify-between no-print sticky top-0 z-50" style="box-shadow:0 1px 3px rgba(0,0,0,0.06)">
+    <div>
+      <h1 class="font-display text-xl font-semibold text-slate-900" id="page-title">Dasbor Eksekutif</h1>
+      <p class="text-xs text-slate-400 mt-0.5" id="page-subtitle">Ringkasan data SDM seluruh unit Yayasan Ar-Rahmah</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <button onclick="reloadData()" class="flex items-center gap-2 px-4 py-2 rounded-10 text-sm font-medium text-slate-600 border border-slate-200 hover:bg-slate-50 transition-all" style="border-radius:10px">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+        Segarkan
+      </button>
+    </div>
+  </header>
+
+  <!-- Loading State -->
+  <div id="loading-state" class="flex flex-col items-center justify-center" style="min-height:60vh">
+    <div class="spinner mb-4"></div>
+    <p class="text-slate-500 text-sm">Memuat data dari Google Sheets...</p>
+    <p class="text-slate-400 text-xs mt-1">Mohon tunggu sebentar</p>
+  </div>
+
+  <!-- Error State -->
+  <div id="error-state" class="hidden p-8">
+    <div class="max-w-md mx-auto text-center">
+      <div class="w-16 h-16 bg-rose-50 rounded-full flex items-center justify-center mx-auto mb-4">
+        <svg class="w-8 h-8 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+      </div>
+      <h3 class="font-semibold text-slate-800 mb-2">Gagal Memuat Data</h3>
+      <p class="text-slate-500 text-sm mb-2" id="error-message">Tidak dapat terhubung ke server API.</p>
+      <p class="text-xs text-slate-400 mb-4">Pastikan URL Apps Script sudah benar dan telah di-deploy sebagai Web App.</p>
+      <button onclick="reloadData()" class="px-5 py-2 bg-sky-600 text-white rounded-10 text-sm font-medium hover:bg-sky-700 transition" style="border-radius:10px">Coba Lagi</button>
+      <div class="mt-4 p-3 bg-amber-50 rounded-lg border border-amber-100 text-left">
+        <p class="text-xs text-amber-700 font-medium mb-1">Mode Demo Aktif</p>
+        <p class="text-xs text-amber-600">Data dummy ditampilkan karena API belum terhubung.</p>
+        <button onclick="loadDemoData()" class="mt-2 text-xs text-amber-700 underline hover:text-amber-900">Muat Data Demo →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TAB: DASBOR ===== -->
+  <div id="tab-dasbor" class="hidden p-8 fade-in">
+
+    <!-- Scorecard Grid -->
+    <div class="grid grid-cols-2 gap-4 mb-6" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr))">
+
+      <div class="scorecard sky col-span-2 md:col-span-1" style="grid-column: 1 / -1">
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Total Pegawai Aktif</div>
+            <div class="font-display text-5xl font-bold text-slate-900" id="sc-total">–</div>
+            <div class="text-sm text-slate-500 mt-1">Seluruh unit Yayasan Ar-Rahmah</div>
+          </div>
+          <div class="w-16 h-16 rounded-2xl flex items-center justify-center flex-shrink-0" style="background:linear-gradient(135deg,#0EA5E9,#38BDF8)">
+            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+          </div>
+        </div>
+      </div>
+
+      <div class="scorecard gold">
+        <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Tenaga Pendidik</div>
+        <div class="font-display text-4xl font-bold text-slate-900" id="sc-pendidik">–</div>
+        <div class="text-sm text-amber-600 mt-1 font-medium">Guru &amp; Kepala Sekolah</div>
+      </div>
+
+      <div class="scorecard green">
+        <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Tenaga Kependidikan</div>
+        <div class="font-display text-4xl font-bold text-slate-900" id="sc-kependidikan">–</div>
+        <div class="text-sm text-emerald-600 mt-1 font-medium">Admin &amp; Perpustakaan</div>
+      </div>
+
+      <div class="scorecard violet">
+        <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Tenaga Penunjang</div>
+        <div class="font-display text-4xl font-bold text-slate-900" id="sc-penunjang">–</div>
+        <div class="text-sm text-violet-600 mt-1 font-medium">Operasional &amp; Layanan</div>
+      </div>
+
+      <div class="scorecard rose">
+        <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Pegawai Resign/Nonaktif</div>
+        <div class="font-display text-4xl font-bold text-slate-900" id="sc-resign">–</div>
+        <div class="text-sm text-rose-500 mt-1 font-medium">Status tidak aktif</div>
+      </div>
+    </div>
+
+    <!-- Unit Breakdown -->
+    <div class="card p-6 mb-6">
+      <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">Distribusi Per Unit</h3>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="unit-breakdown">
+        <!-- Diisi JS -->
+      </div>
+    </div>
+
+    <!-- Charts Row 1 -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+      <div class="card p-6">
+        <h3 class="font-semibold text-slate-800 mb-1">Demografi Usia</h3>
+        <p class="text-xs text-slate-400 mb-4">Berdasarkan kelompok usia pegawai aktif</p>
+        <div class="chart-container" style="height:260px">
+          <canvas id="chart-usia"></canvas>
+        </div>
+      </div>
+      <div class="card p-6">
+        <h3 class="font-semibold text-slate-800 mb-1">Rasio Pilar SDM</h3>
+        <p class="text-xs text-slate-400 mb-4">Pendidik vs Kependidikan vs Penunjang</p>
+        <div class="chart-container" style="height:260px">
+          <canvas id="chart-pilar"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts Row 2 -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="card p-6">
+        <h3 class="font-semibold text-slate-800 mb-1">Kelompok Masa Kerja</h3>
+        <p class="text-xs text-slate-400 mb-4">Distribusi tenure pegawai aktif</p>
+        <div class="chart-container" style="height:260px">
+          <canvas id="chart-masa-kerja"></canvas>
+        </div>
+      </div>
+      <div class="card p-6">
+        <h3 class="font-semibold text-slate-800 mb-1">Pegawai Aktif Per Jabatan</h3>
+        <p class="text-xs text-slate-400 mb-4">Top jabatan berdasarkan jumlah pemegang</p>
+        <div class="chart-container" style="height:260px">
+          <canvas id="chart-jabatan"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TAB: FILTER ===== -->
+  <div id="tab-filter" class="hidden p-8 fade-in">
+
+    <!-- Filter Panel -->
+    <div class="card p-6 mb-6 no-print">
+      <h3 class="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+        <svg class="w-4 h-4 text-sky-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z"/></svg>
+        Panel Filter Multi-Kriteria
+      </h3>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Unit Tugas</label>
+          <select id="f-unit" class="filter-select" onchange="applyFilters()">
+            <option value="">Semua Unit</option>
+            <option>PAUD</option><option>SDIT</option><option>SMPIT</option><option>SMAIT</option><option>Yayasan</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Kelompok Usia</label>
+          <select id="f-usia" class="filter-select" onchange="applyFilters()">
+            <option value="">Semua Usia</option>
+            <option>&lt;25 Tahun</option><option>25-35 Tahun</option><option>36-45 Tahun</option><option>46-55 Tahun</option><option>&gt;55 Tahun</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Status Kepegawaian</label>
+          <select id="f-status-kep" class="filter-select" onchange="applyFilters()">
+            <option value="">Semua Status</option>
+            <option>GTY</option><option>GTTY</option><option>Percobaan</option><option>Pegawai Lepas</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Jabatan</label>
+          <select id="f-jabatan" class="filter-select" onchange="applyFilters()">
+            <option value="">Semua Jabatan</option>
+          </select>
+        </div>
+      </div>
+      <div class="flex items-center justify-between mt-4 pt-4 border-t border-slate-100">
+        <div class="text-sm text-slate-500">Menampilkan <span id="filter-count" class="font-semibold text-slate-800">0</span> pegawai</div>
+        <button onclick="resetFilters()" class="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          Reset Filter
+        </button>
+      </div>
+    </div>
+
+    <!-- Data Table -->
+    <div class="card overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="data-table" id="main-table">
+          <thead>
+            <tr>
+              <th>NIY</th>
+              <th>Nama Pegawai</th>
+              <th>Unit</th>
+              <th>Status Kepegawaian</th>
+              <th>Jabatan Aktif</th>
+              <th>Pilar SDM</th>
+              <th>Masa Kerja</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="table-body">
+            <tr><td colspan="8" class="text-center text-slate-400 py-8">Memuat data...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TAB: PROFIL ===== -->
+  <div id="tab-profil" class="hidden p-8 fade-in" id="profil-content">
+
+    <!-- Cetak & Search -->
+    <div class="flex items-center gap-4 mb-6 no-print">
+      <div class="relative flex-1 max-w-md">
+        <input type="text" id="profil-search" class="search-input" placeholder="Ketik nama pegawai untuk mencari..."
+          oninput="filterProfilDropdown()" onfocus="showDropdown()" onblur="hideDropdownDelayed()" autocomplete="off" />
+        <div id="profil-dropdown" class="dropdown-list hidden"></div>
+      </div>
+      <button onclick="window.print()" id="btn-cetak" class="hidden flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90" style="background:linear-gradient(135deg,#0EA5E9,#0369A1);border-radius:12px">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+        Cetak Profil (PDF)
+      </button>
+    </div>
+
+    <!-- Empty State -->
+    <div id="profil-empty" class="flex flex-col items-center justify-center py-20">
+      <div class="w-20 h-20 rounded-full bg-slate-100 flex items-center justify-center mb-4">
+        <svg class="w-10 h-10 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+      </div>
+      <p class="text-slate-500 font-medium">Pilih pegawai untuk melihat profil</p>
+      <p class="text-slate-400 text-sm mt-1">Gunakan kotak pencarian di atas</p>
+    </div>
+
+    <!-- Profile Content -->
+    <div id="profil-display" class="hidden">
+      <!-- Print Title (hanya tampil saat print) -->
+      <div class="print-title">PROFIL DIGITAL PEGAWAI — YAYASAN AR-RAHMAH SULAWESI</div>
+      <div class="print-subtitle">Makassar, Sulawesi Selatan | Dokumen HRIS Resmi</div>
+
+      <!-- Profile Header Card -->
+      <div class="card mb-6 overflow-hidden">
+        <div class="profile-header">
+          <div class="flex items-center gap-5 relative z-10">
+            <div class="profile-avatar" id="p-avatar">?</div>
+            <div class="flex-1">
+              <div class="text-sky-300 text-xs font-semibold uppercase tracking-widest mb-1" id="p-pilar">–</div>
+              <div class="text-2xl font-display font-bold text-white mb-1" id="p-nama">–</div>
+              <div class="text-slate-300 text-sm" id="p-jabatan-full">–</div>
+              <div class="flex items-center gap-2 mt-2">
+                <span class="badge badge-sky text-xs" id="p-unit-badge">–</span>
+                <span class="badge badge-gold text-xs" id="p-status-kep">–</span>
+              </div>
+            </div>
+            <div class="text-right relative z-10">
+              <div class="text-slate-400 text-xs mb-1">NIY</div>
+              <div class="text-white font-mono text-lg font-bold" id="p-niy">–</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Biodata Grid -->
+        <div class="p-6 grid grid-cols-2 md:grid-cols-3 gap-y-4 gap-x-8">
+          <div>
+            <div class="text-xs text-slate-400 font-semibold uppercase tracking-wide mb-0.5">Tempat, Tanggal Lahir</div>
+            <div class="text-slate-800 font-medium" id="p-ttl">–</div>
+          </div>
+          <div>
+            <div class="text-xs text-slate-400 font-semibold uppercase tracking-wide mb-0.5">Usia</div>
+            <div class="text-slate-800 font-medium" id="p-usia">–</div>
+          </div>
+          <div>
+            <div class="text-xs text-slate-400 font-semibold uppercase tracking-wide mb-0.5">Jenis Kelamin</div>
+            <div class="text-slate-800 font-medium" id="p-jk">–</div>
+          </div>
+          <div>
+            <div class="text-xs text-slate-400 font-semibold uppercase tracking-wide mb-0.5">Status Pernikahan</div>
+            <div class="text-slate-800 font-medium" id="p-menikah">–</div>
+          </div>
+          <div>
+            <div class="text-xs text-slate-400 font-semibold uppercase tracking-wide mb-0.5">Golongan Darah</div>
+            <div class="text-slate-800 font-medium" id="p-gol-darah">–</div>
+          </div>
+          <div>
+            <div class="text-xs text-slate-400 font-semibold uppercase tracking-wide mb-0.5">Masa Pengabdian</div>
+            <div class="text-slate-800 font-medium" id="p-durasi">–</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Riwayat Kepegawaian -->
+      <div class="card mb-6 overflow-hidden">
+        <div class="p-5 border-b border-slate-100 flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-sky-50 flex items-center justify-center">
+            <svg class="w-4 h-4 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          </div>
+          <div>
+            <h3 class="font-semibold text-slate-800">Riwayat Kepegawaian</h3>
+            <p class="text-xs text-slate-400">Status &amp; masa kerja pegawai</p>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Status Kepegawaian</th><th>Tanggal Mulai</th><th>Tanggal Selesai</th>
+                <th>Durasi</th><th>Kelompok Masa Kerja</th><th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="p-table-kepegawaian">
+              <tr><td colspan="6" class="text-center text-slate-400 py-4">–</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Riwayat Jabatan -->
+      <div class="card mb-6 overflow-hidden">
+        <div class="p-5 border-b border-slate-100 flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center">
+            <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+          </div>
+          <div>
+            <h3 class="font-semibold text-slate-800">Riwayat Jabatan</h3>
+            <p class="text-xs text-slate-400">Posisi &amp; tugas yang pernah/sedang diemban</p>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Jabatan</th><th>Rincian Tugas / Kelas</th><th>Unit</th><th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="p-table-jabatan">
+              <tr><td colspan="4" class="text-center text-slate-400 py-4">–</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Riwayat Kepanitiaan -->
+      <div class="card mb-6 overflow-hidden">
+        <div class="p-5 border-b border-slate-100 flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center">
+            <svg class="w-4 h-4 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+          </div>
+          <div>
+            <h3 class="font-semibold text-slate-800">Riwayat Kepanitiaan</h3>
+            <p class="text-xs text-slate-400">Keterlibatan dalam kegiatan &amp; acara</p>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Nama Kegiatan</th><th>Peran / Jabatan</th><th>Tahun</th><th>Tingkat</th><th>No. SK</th>
+              </tr>
+            </thead>
+            <tbody id="p-table-kepanitiaan">
+              <tr><td colspan="5" class="text-center text-slate-400 py-4">Tidak ada data kepanitiaan</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Riwayat Pendidikan — BARU -->
+      <div class="card mb-6 overflow-hidden">
+        <div class="p-5 border-b border-slate-100 flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:#F0FDF4">
+            <svg class="w-4 h-4" style="color:#16A34A" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222"/></svg>
+          </div>
+          <div>
+            <h3 class="font-semibold text-slate-800">Riwayat Pendidikan</h3>
+            <p class="text-xs text-slate-400">Latar belakang pendidikan formal</p>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Jenjang</th><th>Nama Institusi</th><th>Jurusan / Prodi</th>
+                <th>Tahun Masuk</th><th>Tahun Lulus</th><th>Gelar</th><th>Keterangan</th>
+              </tr>
+            </thead>
+            <tbody id="p-table-pendidikan">
+              <tr><td colspan="7" class="text-center text-slate-400 py-4">Tidak ada data pendidikan</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Data Keluarga — BARU -->
+      <div class="card overflow-hidden">
+        <div class="p-5 border-b border-slate-100 flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:#FFF7ED">
+            <svg class="w-4 h-4" style="color:#EA580C" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+          </div>
+          <div>
+            <h3 class="font-semibold text-slate-800">Data Keluarga</h3>
+            <p class="text-xs text-slate-400">Pasangan &amp; anak beserta tanggal lahir</p>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Hubungan</th><th>Nama</th><th>Tempat Lahir</th>
+                <th>Tanggal Lahir</th><th>Usia</th><th>Pekerjaan</th><th>Keterangan</th>
+              </tr>
+            </thead>
+            <tbody id="p-table-keluarga">
+              <tr><td colspan="7" class="text-center text-slate-400 py-4">Tidak ada data keluarga</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TAB: FORM INPUT DATA ===== -->
+  <div id="tab-form" class="hidden p-8 fade-in">
+
+    <!-- Step Indicator -->
+    <div class="card p-6 mb-6 no-print">
+      <div class="flex items-center gap-0" id="step-indicator">
+        <!-- Diisi JS -->
+      </div>
+    </div>
+
+    <!-- Step 0: Pilih Pegawai -->
+    <div id="form-step-0" class="card p-8 mb-4">
+      <div class="max-w-xl mx-auto text-center">
+        <div class="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4" style="background:linear-gradient(135deg,#0EA5E9,#0369A1)">
+          <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+        </div>
+        <div class="font-display text-xl font-bold text-slate-900 mb-1">Siapa Anda?</div>
+        <p class="text-slate-400 text-sm mb-6">Ketik nama Anda untuk mulai mengisi atau memperbarui data</p>
+        <div class="relative text-left">
+          <input type="text" id="form-search-nama" class="form-input text-base" placeholder="Ketik nama lengkap Anda..."
+            oninput="filterFormDropdown()" onfocus="showFormDropdown()" onblur="hideFormDropdownDelayed()" autocomplete="off" />
+          <div id="form-dropdown" class="dropdown-list hidden"></div>
+        </div>
+        <div id="form-selected-info" class="hidden mt-5 p-4 rounded-xl text-left" style="background:#F0F9FF;border:1.5px solid #BAE6FD">
+          <div class="flex items-center gap-3">
+            <div id="form-avatar-mini" class="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0" style="background:linear-gradient(135deg,#0EA5E9,#0369A1)">?</div>
+            <div>
+              <div class="font-semibold text-slate-800" id="form-selected-nama">–</div>
+              <div class="text-xs text-slate-500" id="form-selected-sub">–</div>
+            </div>
+          </div>
+          <button class="btn-primary w-full mt-4" onclick="formNext()">
+            Lanjut Isi Data
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 1: Data Pribadi -->
+    <div id="form-step-1" class="hidden">
+      <div class="card p-6 mb-4">
+        <div class="form-section-title mb-1">Data Pribadi</div>
+        <p class="text-xs text-slate-400 mb-5">Informasi dasar dan kontak</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="md:col-span-2">
+            <label class="form-label">Nama Lengkap <span class="req">*</span></label>
+            <input type="text" id="f-nama" class="form-input" placeholder="Nama lengkap sesuai KTP" />
+          </div>
+          <div>
+            <label class="form-label">Tempat Lahir <span class="req">*</span></label>
+            <input type="text" id="f-tempat-lahir" class="form-input" placeholder="Kota lahir" />
+          </div>
+          <div>
+            <label class="form-label">Tanggal Lahir <span class="req">*</span></label>
+            <input type="date" id="f-tanggal-lahir" class="form-input" />
+          </div>
+          <div>
+            <label class="form-label">Jenis Kelamin <span class="req">*</span></label>
+            <select id="f-jenis-kelamin" class="form-input">
+              <option value="">-- Pilih --</option>
+              <option>Laki-laki</option>
+              <option>Perempuan</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Golongan Darah</label>
+            <select id="f-gol-darah" class="form-input">
+              <option value="">-- Pilih --</option>
+              <option>A</option><option>B</option><option>AB</option><option>O</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Status Pernikahan <span class="req">*</span></label>
+            <select id="f-status-nikah" class="form-input">
+              <option value="">-- Pilih --</option>
+              <option>Belum Menikah</option><option>Menikah</option><option>Cerai Hidup</option><option>Cerai Mati</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">No. HP / WhatsApp <span class="req">*</span></label>
+            <input type="tel" id="f-hp" class="form-input" placeholder="08xxxxxxxxxx" />
+          </div>
+          <div>
+            <label class="form-label">Email</label>
+            <input type="email" id="f-email" class="form-input" placeholder="nama@email.com" />
+          </div>
+          <div class="md:col-span-2">
+            <label class="form-label">Alamat Lengkap</label>
+            <textarea id="f-alamat" class="form-input" rows="3" style="resize:vertical" placeholder="Jalan, RT/RW, Kelurahan, Kecamatan, Kota"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="flex justify-between">
+        <button class="btn-secondary" onclick="formBack()">← Kembali</button>
+        <button class="btn-primary" onclick="formNext()">Lanjut → Riwayat Pendidikan</button>
+      </div>
+    </div>
+
+    <!-- Step 2: Riwayat Pendidikan -->
+    <div id="form-step-2" class="hidden">
+      <div class="card p-6 mb-4">
+        <div class="flex items-start justify-between mb-5">
+          <div>
+            <div class="form-section-title mb-1">Riwayat Pendidikan</div>
+            <p class="text-xs text-slate-400">Tambahkan semua jenjang pendidikan formal yang pernah ditempuh</p>
+          </div>
+        </div>
+        <div id="pendidikan-list" class="space-y-3 mb-4"></div>
+        <button class="btn-add-row" onclick="addPendidikanRow()">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          Tambah Jenjang Pendidikan
+        </button>
+      </div>
+      <div class="flex justify-between">
+        <button class="btn-secondary" onclick="formBack()">← Kembali</button>
+        <button class="btn-primary" onclick="formNext()">Lanjut → Data Keluarga</button>
+      </div>
+    </div>
+
+    <!-- Step 3: Data Keluarga -->
+    <div id="form-step-3" class="hidden">
+      <div class="card p-6 mb-4">
+        <div class="flex items-start justify-between mb-5">
+          <div>
+            <div class="form-section-title mb-1">Data Keluarga</div>
+            <p class="text-xs text-slate-400">Pasangan dan anak-anak beserta tanggal lahir masing-masing</p>
+          </div>
+        </div>
+        <div id="keluarga-list" class="space-y-3 mb-4"></div>
+        <button class="btn-add-row" onclick="addKeluargaRow()">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          Tambah Anggota Keluarga
+        </button>
+      </div>
+      <div class="flex justify-between">
+        <button class="btn-secondary" onclick="formBack()">← Kembali</button>
+        <button class="btn-primary" onclick="formNext()">Lanjut → Dokumen & Lainnya</button>
+      </div>
+    </div>
+
+    <!-- Step 4: Data Tambahan -->
+    <div id="form-step-4" class="hidden">
+      <div class="card p-6 mb-4">
+        <div class="form-section-title mb-1">Informasi Tambahan</div>
+        <p class="text-xs text-slate-400 mb-5">Nomor dokumen penting dan catatan lain</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="form-label">No. KTP / NIK</label>
+            <input type="text" id="f-nik" class="form-input" placeholder="16 digit NIK" maxlength="16" />
+          </div>
+          <div>
+            <label class="form-label">No. NPWP</label>
+            <input type="text" id="f-npwp" class="form-input" placeholder="xx.xxx.xxx.x-xxx.xxx" />
+          </div>
+          <div>
+            <label class="form-label">No. BPJS Kesehatan</label>
+            <input type="text" id="f-bpjs-kes" class="form-input" placeholder="No. kartu BPJS Kesehatan" />
+          </div>
+          <div>
+            <label class="form-label">No. BPJS Ketenagakerjaan</label>
+            <input type="text" id="f-bpjs-tk" class="form-input" placeholder="No. BPJS Ketenagakerjaan" />
+          </div>
+          <div>
+            <label class="form-label">No. Rekening Bank</label>
+            <input type="text" id="f-rekening" class="form-input" placeholder="Nomor rekening" />
+          </div>
+          <div>
+            <label class="form-label">Nama Bank</label>
+            <select id="f-bank" class="form-input">
+              <option value="">-- Pilih Bank --</option>
+              <option>BRI</option><option>BNI</option><option>Mandiri</option><option>BCA</option>
+              <option>BSI (Bank Syariah Indonesia)</option><option>Muamalat</option>
+              <option>Bank Sulselbar</option><option>Lainnya</option>
+            </select>
+          </div>
+          <div class="md:col-span-2">
+            <label class="form-label">Catatan / Informasi Tambahan</label>
+            <textarea id="f-catatan" class="form-input" rows="3" style="resize:vertical" placeholder="Informasi lain yang perlu disampaikan ke HRD..."></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="flex justify-between">
+        <button class="btn-secondary" onclick="formBack()">← Kembali</button>
+        <button class="btn-primary" onclick="formNext()">Lanjut → Periksa & Kirim</button>
+      </div>
+    </div>
+
+    <!-- Step 5: Review & Submit -->
+    <div id="form-step-5" class="hidden">
+      <div class="card p-6 mb-4">
+        <div class="form-section-title mb-1">Periksa Data Sebelum Mengirim</div>
+        <p class="text-xs text-slate-400 mb-5">Pastikan semua informasi sudah benar. Data akan masuk ke antrian persetujuan admin.</p>
+        <div id="review-content" class="space-y-4"></div>
+        <div class="mt-5 p-4 rounded-xl flex items-start gap-3" style="background:#FFFBEB;border:1.5px solid #FCD34D">
+          <svg class="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <div>
+            <div class="text-xs font-semibold text-amber-700">Catatan Penting</div>
+            <div class="text-xs text-amber-600 mt-0.5">Data Anda akan masuk ke antrian <strong>Pending Approval</strong> dan akan diverifikasi oleh Admin HRD sebelum dimasukkan ke sistem. Anda akan dihubungi jika ada pertanyaan.</div>
+          </div>
+        </div>
+      </div>
+      <div class="flex justify-between">
+        <button class="btn-secondary" onclick="formBack()">← Perbaiki Data</button>
+        <button class="btn-primary" id="btn-submit-form" onclick="submitForm()">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+          Kirim ke Admin
+        </button>
+      </div>
+    </div>
+
+    <!-- Step 6: Success -->
+    <div id="form-step-6" class="hidden">
+      <div class="card p-12 text-center">
+        <div class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-5" style="background:#D1FAE5">
+          <svg class="w-10 h-10" style="color:#059669" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+        </div>
+        <div class="font-display text-2xl font-bold text-slate-900 mb-2">Data Berhasil Dikirim!</div>
+        <p class="text-slate-500 mb-1">Terima kasih, <strong id="success-nama">–</strong>.</p>
+        <p class="text-slate-400 text-sm mb-6">Data Anda telah masuk ke antrian persetujuan Admin HRD.<br/>Perubahan akan aktif setelah diverifikasi.</p>
+        <div class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium mb-6" style="background:#FEF3C7;color:#92400E">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          Status: Menunggu Approval Admin
+        </div>
+        <div><button class="btn-primary" onclick="resetForm()">Isi Data Lagi</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TAB: APPROVAL ADMIN ===== -->
+  <div id="tab-approval" class="hidden p-8 fade-in">
+
+    <!-- Header Info -->
+    <div class="card p-5 mb-6 flex items-center justify-between no-print">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:#FFFBEB">
+          <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7l2 2 4-4"/></svg>
+        </div>
+        <div>
+          <div class="font-semibold text-slate-800">Antrian Persetujuan Admin</div>
+          <div class="text-xs text-slate-400">Pengajuan data dari pegawai yang menunggu verifikasi</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <select id="approval-filter" class="filter-select" style="width:auto;min-width:160px" onchange="renderApprovalList()">
+          <option value="Pending">Menunggu (Pending)</option>
+          <option value="Approved">Sudah Disetujui</option>
+          <option value="Rejected">Ditolak</option>
+          <option value="">Semua Status</option>
+        </select>
+        <button onclick="loadPendingData()" class="btn-secondary text-sm py-2 px-3">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Approval List -->
+    <div id="approval-list" class="space-y-4">
+      <div class="text-center py-12 text-slate-400">
+        <svg class="w-12 h-12 mx-auto mb-3 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+        <p>Tidak ada pengajuan ditemukan</p>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- Modal Detail Approval -->
+<div id="modal-overlay" class="hidden fixed inset-0 z-50 flex items-center justify-center" style="background:rgba(0,0,0,0.5)">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 max-h-screen overflow-y-auto">
+    <div class="p-6 border-b border-slate-100 flex items-center justify-between">
+      <div>
+        <div class="font-display font-bold text-slate-900 text-lg" id="modal-title">Detail Pengajuan</div>
+        <div class="text-xs text-slate-400 mt-0.5" id="modal-subtitle">–</div>
+      </div>
+      <button onclick="closeModal()" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors">
+        <svg class="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="p-6" id="modal-body"></div>
+    <div class="p-5 border-t border-slate-100 flex justify-end gap-3" id="modal-actions"></div>
+  </div>
+</div>
+
+<!-- ===== JAVASCRIPT ===== -->
+<script>
+// ============================================================
+// KONFIGURASI
+// ============================================================
+
+// !! GANTI URL INI dengan URL deploy Apps Script Anda !!
+// Jika masih placeholder, dashboard otomatis masuk MODE DEMO
+const API_URL = "https://script.google.com/macros/s/AKfycbyYt0DGX4L2PFOYENevEB0XE6_0SKyx6Mg59mzc3Mz3ok_F59_wwKlobr6vEEG-_g68/exec";
+
+// State global
+let allData = null;
+let charts  = {};
+let activeTab = "dasbor";
+let isDemoMode = false;
+
+// ============================================================
+// INISIALISASI
+// ============================================================
+document.addEventListener("DOMContentLoaded", () => {
+  loadData();
+});
+
+async function loadData() {
+  showLoading();
+
+  // Jika URL belum diganti, langsung masuk mode demo
+  if (!API_URL || API_URL.includes("GANTI_DENGAN") || API_URL.trim() === "") {
+    console.info("API URL belum diset — masuk Mode Demo otomatis.");
+    setTimeout(() => loadDemoData(), 800); // delay kecil agar spinner terlihat
+    return;
+  }
+
+  try {
+    const response = await fetch(API_URL, { redirect: "follow" });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const json = await response.json();
+    if (json.status !== "ok") throw new Error(json.message || "Error server");
+
+    allData = json.data;
+    isDemoMode = false;
+    document.getElementById("last-sync").textContent =
+      "Diperbarui: " + new Date(allData.generated_at).toLocaleString("id-ID", { dateStyle: "short", timeStyle: "short" });
+
+    onDataReady();
+  } catch (err) {
+    console.warn("API Error:", err.message, "— Fallback ke Mode Demo.");
+    // Auto-fallback ke demo data agar tidak stuck di spinner
+    loadDemoData();
+  }
+}
+
+function reloadData() {
+  allData = null;
+  destroyCharts();
+  loadData();
+}
+
+// ============================================================
+// DEMO DATA — Diaktifkan otomatis jika API belum tersambung
+// ============================================================
+function loadDemoData() {
+  isDemoMode = true;
+  const demoPegawai = generateDemoStaff();
+  const p0 = demoPegawai[0].nama;
+  const p1 = demoPegawai[1].nama;
+  const p2 = demoPegawai[2].nama;
+
+  allData = {
+    pegawai:     demoPegawai,
+    kepegawaian: demoPegawai.map(p => ({
+      nama: p.nama, status_kepegawaian: p.status_kepegawaian,
+      tanggal_mulai: "2018-07-01", tanggal_selesai: "",
+      status_data: "Aktif", durasi: "6 Tahun 11 Bulan",
+      kelompok_masa_kerja: p.kelompok_masa_kerja
+    })),
+    jabatan: demoPegawai.map(p => ({
+      nama: p.nama, nama_jabatan: p.jabatan_aktif,
+      rincian_tugas: p.rincian_tugas, unit_tugas: p.unit,
+      status_data: "Aktif", id_jabatan: "J-" + Math.random().toString(36).substr(2,4).toUpperCase()
+    })),
+    kepanitiaan: [
+      { nama: p0, kegiatan: "Pentas Seni Ar-Rahmah 2024", peran: "Ketua Panitia", tahun: 2024, tingkat: "Yayasan", no_sk: "SK/001/2024" },
+      { nama: p0, kegiatan: "Wisuda SMAIT 2023", peran: "Koordinator Acara", tahun: 2023, tingkat: "Unit", no_sk: "" },
+      { nama: p1, kegiatan: "Porseni Ar-Rahmah 2024", peran: "Sekretaris", tahun: 2024, tingkat: "Yayasan", no_sk: "SK/002/2024" },
+    ],
+
+    // ── DEMO: Riwayat Pendidikan ──────────────────────────────
+    pendidikan: [
+      { nama: p0, jenjang: "SD",  institusi: "SDN Bontobiraeng Makassar",     jurusan: "",                       thn_masuk: "1994", thn_lulus: "2000", gelar: "",     keterangan: "" },
+      { nama: p0, jenjang: "SMP", institusi: "SMPN 6 Makassar",               jurusan: "",                       thn_masuk: "2000", thn_lulus: "2003", gelar: "",     keterangan: "" },
+      { nama: p0, jenjang: "SMA", institusi: "SMAN 17 Makassar",              jurusan: "IPA",                    thn_masuk: "2003", thn_lulus: "2006", gelar: "",     keterangan: "" },
+      { nama: p0, jenjang: "S1",  institusi: "Universitas Negeri Makassar",   jurusan: "Pendidikan Matematika",  thn_masuk: "2006", thn_lulus: "2010", gelar: "S.Pd", keterangan: "" },
+      { nama: p0, jenjang: "S2",  institusi: "Universitas Hasanuddin",        jurusan: "Manajemen Pendidikan",   thn_masuk: "2015", thn_lulus: "2017", gelar: "M.Pd", keterangan: "Beasiswa LPDP" },
+      { nama: p1, jenjang: "SD",  institusi: "SD Islam Terpadu Makassar",     jurusan: "",                       thn_masuk: "1996", thn_lulus: "2002", gelar: "",     keterangan: "" },
+      { nama: p1, jenjang: "SMP", institusi: "SMPN 1 Makassar",               jurusan: "",                       thn_masuk: "2002", thn_lulus: "2005", gelar: "",     keterangan: "" },
+      { nama: p1, jenjang: "SMA", institusi: "MAN 2 Makassar",                jurusan: "IPS",                    thn_masuk: "2005", thn_lulus: "2008", gelar: "",     keterangan: "" },
+      { nama: p1, jenjang: "S1",  institusi: "UIN Alauddin Makassar",         jurusan: "Pendidikan Agama Islam", thn_masuk: "2008", thn_lulus: "2012", gelar: "S.Pd.I", keterangan: "" },
+      { nama: p2, jenjang: "SMA", institusi: "SMAN 1 Makassar",               jurusan: "IPA",                    thn_masuk: "2001", thn_lulus: "2004", gelar: "",     keterangan: "" },
+      { nama: p2, jenjang: "S1",  institusi: "Universitas Muslim Indonesia",  jurusan: "Manajemen",              thn_masuk: "2004", thn_lulus: "2008", gelar: "S.E",  keterangan: "" },
+    ],
+
+    // ── DEMO: Data Keluarga ───────────────────────────────────
+    keluarga: [
+      // Pasangan & anak pegawai pertama
+      { nama: p0, hubungan: "Istri",    nama_anggota: "Aisyah Rahmawati, S.E",      tempat_lahir: "Makassar",   tanggal_lahir: "1987-04-22", pekerjaan: "Pegawai Swasta",    keterangan: "" },
+      { nama: p0, hubungan: "Anak ke-1",nama_anggota: "Muhammad Fathan",             tempat_lahir: "Makassar",   tanggal_lahir: "2011-08-14", pekerjaan: "Pelajar",           keterangan: "Kelas 7 SMPIT" },
+      { nama: p0, hubungan: "Anak ke-2",nama_anggota: "Zahra Nabila",                tempat_lahir: "Makassar",   tanggal_lahir: "2014-03-07", pekerjaan: "Pelajar",           keterangan: "Kelas 4 SDIT" },
+      { nama: p0, hubungan: "Anak ke-3",nama_anggota: "Ahmad Rafi",                  tempat_lahir: "Makassar",   tanggal_lahir: "2019-11-25", pekerjaan: "Belum sekolah",     keterangan: "" },
+      // Pasangan & anak pegawai kedua
+      { nama: p1, hubungan: "Suami",    nama_anggota: "Drs. Hendra Kusuma",          tempat_lahir: "Bone",       tanggal_lahir: "1980-06-10", pekerjaan: "PNS",               keterangan: "" },
+      { nama: p1, hubungan: "Anak ke-1",nama_anggota: "Najwa Salsabila",             tempat_lahir: "Makassar",   tanggal_lahir: "2009-01-30", pekerjaan: "Pelajar",           keterangan: "Kelas 10 SMAIT" },
+      { nama: p1, hubungan: "Anak ke-2",nama_anggota: "Faris Abdurrahman",           tempat_lahir: "Makassar",   tanggal_lahir: "2013-09-12", pekerjaan: "Pelajar",           keterangan: "Kelas 5 SDIT" },
+      // Kepala Sekolah — belum menikah
+      { nama: p2, hubungan: "Istri",    nama_anggota: "Nurul Hidayah, S.Pd",         tempat_lahir: "Gowa",       tanggal_lahir: "1983-12-03", pekerjaan: "Guru",              keterangan: "" },
+      { nama: p2, hubungan: "Anak ke-1",nama_anggota: "Ibrahim Maulana",             tempat_lahir: "Makassar",   tanggal_lahir: "2008-07-19", pekerjaan: "Pelajar",           keterangan: "Kelas 11 SMAIT" },
+    ],
+
+    pilar_sdm: { "Tenaga Pendidik": ["Kepala Sekolah","Wakil Kepala Sekolah","Korjen","Wali Kelas","Guru Mitra"], "Tenaga Kependidikan": ["Staf Administrasi","Staf Keuangan/Kasir","Kepala Perpustakaan"], "Tenaga Penunjang/Operasional": ["Kepala Rumah Tangga","Security","Jaga Malam","Cleaning Service","Helper Day Care"] },
+    generated_at: new Date().toISOString()
+  };
+
+  // Update sidebar info
+  document.getElementById("last-sync").textContent = "⚠ Mode Demo — Data tidak nyata";
+  document.getElementById("last-sync").style.color = "#FBBF24";
+
+  // Tampilkan banner demo di atas konten
+  const existingBanner = document.getElementById("demo-banner");
+  if (!existingBanner) {
+    const banner = document.createElement("div");
+    banner.id = "demo-banner";
+    banner.className = "no-print";
+    banner.style.cssText = "position:fixed;bottom:20px;right:20px;z-index:9999;background:#1E293B;border:1px solid #FBBF24;border-radius:12px;padding:12px 18px;display:flex;align-items:center;gap:10px;box-shadow:0 4px 20px rgba(0,0,0,0.3)";
+    banner.innerHTML = `
+      <span style="font-size:18px">🟡</span>
+      <div>
+        <div style="color:#FBBF24;font-size:12px;font-weight:700;font-family:'DM Sans',sans-serif">MODE DEMO AKTIF</div>
+        <div style="color:#94A3B8;font-size:11px;font-family:'DM Sans',sans-serif">Ganti API_URL dengan URL Apps Script Anda</div>
+      </div>`;
+    document.body.appendChild(banner);
+  }
+
+  onDataReady();
+}
+
+function generateDemoStaff() {
+  const units = ["SDIT","SMPIT","SMAIT","PAUD","Yayasan"];
+  const jabatans = [
+    ["Wali Kelas","Kelas 1 Abu Bakar"],["Guru Mitra","Kelas 3 Umar"],
+    ["Kepala Sekolah",""],["Staf Administrasi",""],["Staf Keuangan/Kasir",""],
+    ["Security",""],["Cleaning Service",""],["Helper Day Care",""],
+    ["Wakil Kepala Sekolah",""],["Korjen",""],["Kepala Perpustakaan",""],
+  ];
+  const usiaGroups = ["<25 Tahun","25-35 Tahun","25-35 Tahun","36-45 Tahun","36-45 Tahun","46-55 Tahun"];
+  const masaKerja = ["<1 Tahun","1-3 Tahun","4-7 Tahun","4-7 Tahun","8-15 Tahun","8-15 Tahun",">15 Tahun"];
+  const statusKep = ["GTY","GTY","GTTY","Percobaan","Pegawai Lepas"];
+  const names = ["Abdullah Rahman","Siti Aminah","Muhammad Fadli","Nur Hidayah","Ahmad Syafi'i","Rahma Dewi","Umar Faruq","Zainab Hasanah","Faisal Hakim","Maryam Sholihah","Khalid Basri","Aisyah Putri","Yusuf Andika","Fatimah Azzahra","Ibrahim Salam","Khadijah Mulia","Hamzah Pratama","Asma Wulandari","Bilal Santoso","Hafshah Rizqi","Ikhwan Pratama","Ummu Kultsum","Salman Harahap","Ruqayyah Sari","Thalhah Syawal"];
+  const pilarMap = { "Wali Kelas": "Tenaga Pendidik","Guru Mitra": "Tenaga Pendidik","Kepala Sekolah": "Tenaga Pendidik","Wakil Kepala Sekolah": "Tenaga Pendidik","Korjen": "Tenaga Pendidik","Staf Administrasi": "Tenaga Kependidikan","Staf Keuangan/Kasir": "Tenaga Kependidikan","Kepala Perpustakaan": "Tenaga Kependidikan","Security": "Tenaga Penunjang/Operasional","Cleaning Service": "Tenaga Penunjang/Operasional","Helper Day Care": "Tenaga Penunjang/Operasional" };
+
+  return names.map((nama, i) => {
+    const [jab, rincian] = jabatans[i % jabatans.length];
+    const unit = units[i % units.length];
+    return {
+      niy: "ARR-" + String(1001 + i).padStart(4,"0"),
+      nama, unit, tempat_lahir: "Makassar", tanggal_lahir: `198${i%10}-0${(i%9)+1}-15`,
+      usia: 25 + (i % 30), kelompok_usia: usiaGroups[i % usiaGroups.length],
+      status_pegawai: i < 23 ? "Aktif" : "Resign",
+      jenis_kelamin: i % 2 === 0 ? "Laki-laki" : "Perempuan",
+      golongan_darah: ["A","B","O","AB"][i%4],
+      status_pernikahan: i > 3 ? "Menikah" : "Belum Menikah",
+      status_kepegawaian: statusKep[i % statusKep.length],
+      kelompok_masa_kerja: masaKerja[i % masaKerja.length],
+      durasi_pengabdian: "5 Tahun 3 Bulan",
+      jabatan_aktif: jab, rincian_tugas: rincian,
+      unit_jabatan: unit,
+      pilar_sdm: pilarMap[jab] || "Tenaga Pendidik"
+    };
+  });
+}
+
+// ============================================================
+// ON DATA READY
+// ============================================================
+function onDataReady() {
+  hideLoading();
+  buildDasbor();
+  buildFilterDropdowns();
+  buildProfilDropdown();
+  applyFilters();
+  showTab(activeTab);
+}
+
+// ============================================================
+// TAB NAVIGATION
+// ============================================================
+function showTab(tabName) {
+  activeTab = tabName;
+  ["dasbor","filter","profil","form","approval"].forEach(t => {
+    const el = document.getElementById("tab-" + t);
+    if (el) el.classList.add("hidden");
+  });
+  document.querySelectorAll(".nav-item").forEach(el => el.classList.remove("active"));
+
+  const el = document.getElementById("tab-" + tabName);
+  if (el) { el.classList.remove("hidden"); el.classList.add("fade-in"); }
+
+  const titles = {
+    dasbor:   ["Dasbor Eksekutif",       "Ringkasan data SDM seluruh unit Yayasan Ar-Rahmah"],
+    filter:   ["Filter & Data Pegawai",  "Pencarian multi-kriteria seluruh pegawai"],
+    profil:   ["Profil Digital Pegawai", "Lihat & cetak profil individual pegawai"],
+    form:     ["Isi / Perbarui Data",    "Pegawai dapat mengisi atau memperbarui data diri secara mandiri"],
+    approval: ["Approval Admin",         "Verifikasi pengajuan data dari pegawai"]
+  };
+  if (titles[tabName]) {
+    document.getElementById("page-title").textContent    = titles[tabName][0];
+    document.getElementById("page-subtitle").textContent = titles[tabName][1];
+  }
+
+  const navTabs = ["dasbor","filter","profil","form","approval"];
+  const navIdx  = navTabs.indexOf(tabName);
+  document.querySelectorAll(".nav-item")[navIdx]?.classList.add("active");
+
+  if (tabName === "form")     initForm();
+  if (tabName === "approval") loadPendingData();
+}
+
+// ============================================================
+// LOADING & ERROR STATES
+// ============================================================
+function showLoading() {
+  document.getElementById("loading-state").classList.remove("hidden");
+  document.getElementById("error-state").classList.add("hidden");
+  ["dasbor","filter","profil","form","approval"].forEach(t => {
+    const el = document.getElementById("tab-" + t);
+    if (el) el.classList.add("hidden");
+  });
+}
+function hideLoading() {
+  document.getElementById("loading-state").classList.add("hidden");
+  document.getElementById("error-state").classList.add("hidden");
+}
+function showError() {
+  document.getElementById("loading-state").classList.add("hidden");
+  document.getElementById("error-state").classList.remove("hidden");
+}
+
+// ============================================================
+// DASBOR: BUILD SCORECARDS & CHARTS
+// ============================================================
+function buildDasbor() {
+  if (!allData) return;
+  const aktif = allData.pegawai.filter(p => p.status_pegawai === "Aktif");
+  const resign = allData.pegawai.filter(p => p.status_pegawai !== "Aktif");
+
+  // Scorecards
+  document.getElementById("sc-total").textContent    = aktif.length;
+  document.getElementById("sc-pendidik").textContent = aktif.filter(p => p.pilar_sdm === "Tenaga Pendidik").length;
+  document.getElementById("sc-kependidikan").textContent = aktif.filter(p => p.pilar_sdm === "Tenaga Kependidikan").length;
+  document.getElementById("sc-penunjang").textContent = aktif.filter(p => p.pilar_sdm === "Tenaga Penunjang/Operasional").length;
+  document.getElementById("sc-resign").textContent   = resign.length;
+
+  // Unit breakdown
+  const units = ["PAUD","SDIT","SMPIT","SMAIT","Yayasan"];
+  const unitColors = { PAUD: "sky", SDIT: "gold", SMPIT: "green", SMAIT: "violet", Yayasan: "rose" };
+  const unitBadgeClass = { PAUD: "badge-sky", SDIT: "badge-gold", SMPIT: "badge-green", SMAIT: "badge-violet", Yayasan: "badge-rose" };
+  const unitContainer = document.getElementById("unit-breakdown");
+  unitContainer.innerHTML = units.map(unit => {
+    const count = aktif.filter(p => p.unit === unit || p.unit_jabatan === unit).length;
+    return `
+      <div class="text-center p-4 rounded-xl border-2 border-slate-100 hover:border-sky-200 transition-all">
+        <div class="font-display text-3xl font-bold text-slate-900 mb-1">${count}</div>
+        <span class="badge ${unitBadgeClass[unit]}">${unit}</span>
+      </div>`;
+  }).join("");
+
+  // Build charts
+  buildCharts(aktif);
+}
+
+function destroyCharts() {
+  Object.values(charts).forEach(c => { try { c.destroy(); } catch(e) {} });
+  charts = {};
+}
+
+function buildCharts(aktif) {
+  destroyCharts();
+
+  const PALETTE = {
+    sky:    ["rgba(14,165,233,0.85)","rgba(56,189,248,0.85)","rgba(125,211,252,0.85)","rgba(186,230,253,0.85)","rgba(224,242,254,0.9)"],
+    slate:  ["rgba(15,23,42,0.85)","rgba(30,41,59,0.85)","rgba(51,65,85,0.85)"],
+    gold:   ["rgba(217,119,6,0.85)","rgba(245,158,11,0.85)","rgba(251,191,36,0.85)","rgba(252,211,77,0.85)","rgba(253,230,138,0.85)"],
+    pilar:  ["rgba(14,165,233,0.85)","rgba(217,119,6,0.85)","rgba(124,58,237,0.85)"],
+  };
+
+  // Chart 1: Demografi Usia (Donut)
+  const usiaLabels = ["<25 Tahun","25-35 Tahun","36-45 Tahun","46-55 Tahun",">55 Tahun"];
+  const usiaData   = usiaLabels.map(l => aktif.filter(p => p.kelompok_usia === l).length);
+  charts.usia = new Chart(document.getElementById("chart-usia"), {
+    type: "doughnut",
+    data: { labels: usiaLabels, datasets: [{ data: usiaData, backgroundColor: PALETTE.sky, borderWidth: 2, borderColor: "#fff" }] },
+    options: { responsive: true, maintainAspectRatio: false, cutout: "62%",
+      plugins: { legend: { position: "right", labels: { font: { family: "DM Sans", size: 12 }, boxWidth: 12, padding: 12 } } } }
+  });
+
+  // Chart 2: Pilar SDM (Pie)
+  const pilarLabels = ["Tenaga Pendidik","Tenaga Kependidikan","Tenaga Penunjang/Operasional"];
+  const pilarData   = pilarLabels.map(l => aktif.filter(p => p.pilar_sdm === l).length);
+  charts.pilar = new Chart(document.getElementById("chart-pilar"), {
+    type: "pie",
+    data: { labels: pilarLabels, datasets: [{ data: pilarData, backgroundColor: PALETTE.pilar, borderWidth: 2, borderColor: "#fff" }] },
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: "right", labels: { font: { family: "DM Sans", size: 11 }, boxWidth: 12, padding: 10 } } } }
+  });
+
+  // Chart 3: Masa Kerja (Bar)
+  const mkLabels = ["<1 Tahun","1-3 Tahun","4-7 Tahun","8-15 Tahun",">15 Tahun"];
+  const mkData   = mkLabels.map(l => aktif.filter(p => p.kelompok_masa_kerja === l).length);
+  charts.masaKerja = new Chart(document.getElementById("chart-masa-kerja"), {
+    type: "bar",
+    data: { labels: mkLabels, datasets: [{ label: "Jumlah Pegawai", data: mkData, backgroundColor: PALETTE.gold, borderRadius: 8, borderSkipped: false }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+      scales: { x: { grid: { display: false }, ticks: { font: { family: "DM Sans", size: 11 } } }, y: { beginAtZero: true, grid: { color: "#F1F5F9" }, ticks: { font: { family: "DM Sans", size: 11 }, precision: 0 } } } }
+  });
+
+  // Chart 4: Per Jabatan (Horizontal Bar)
+  const jabMap = {};
+  aktif.forEach(p => { if (p.jabatan_aktif) jabMap[p.jabatan_aktif] = (jabMap[p.jabatan_aktif] || 0) + 1; });
+  const jabSorted = Object.entries(jabMap).sort((a,b) => b[1]-a[1]).slice(0, 10);
+  const jabLabels = jabSorted.map(e => e[0]);
+  const jabData   = jabSorted.map(e => e[1]);
+  charts.jabatan = new Chart(document.getElementById("chart-jabatan"), {
+    type: "bar",
+    data: { labels: jabLabels, datasets: [{ label: "Pegawai", data: jabData, backgroundColor: "rgba(14,165,233,0.8)", borderRadius: 6, borderSkipped: false }] },
+    options: { indexAxis: "y", responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { x: { beginAtZero: true, grid: { color: "#F1F5F9" }, ticks: { precision: 0, font: { family: "DM Sans", size: 11 } } }, y: { grid: { display: false }, ticks: { font: { family: "DM Sans", size: 11 } } } } }
+  });
+}
+
+// ============================================================
+// FILTER TAB
+// ============================================================
+function buildFilterDropdowns() {
+  if (!allData) return;
+  const jabSet = new Set(allData.pegawai.filter(p => p.jabatan_aktif).map(p => p.jabatan_aktif));
+  const jabSelect = document.getElementById("f-jabatan");
+  jabSelect.innerHTML = '<option value="">Semua Jabatan</option>';
+  [...jabSet].sort().forEach(j => {
+    const opt = document.createElement("option");
+    opt.value = opt.textContent = j;
+    jabSelect.appendChild(opt);
+  });
+}
+
+function applyFilters() {
+  if (!allData) return;
+  const fUnit   = document.getElementById("f-unit").value;
+  const fUsia   = document.getElementById("f-usia").value;
+  const fStatus = document.getElementById("f-status-kep").value;
+  const fJabat  = document.getElementById("f-jabatan").value;
+
+  let hasil = allData.pegawai.filter(p => p.status_pegawai === "Aktif");
+  if (fUnit)   hasil = hasil.filter(p => p.unit === fUnit || p.unit_jabatan === fUnit);
+  if (fUsia)   hasil = hasil.filter(p => p.kelompok_usia === fUsia);
+  if (fStatus) hasil = hasil.filter(p => p.status_kepegawaian === fStatus);
+  if (fJabat)  hasil = hasil.filter(p => p.jabatan_aktif === fJabat);
+
+  renderTable(hasil);
+  document.getElementById("filter-count").textContent = hasil.length;
+}
+
+function resetFilters() {
+  ["f-unit","f-usia","f-status-kep","f-jabatan"].forEach(id => {
+    document.getElementById(id).value = "";
+  });
+  applyFilters();
+}
+
+function renderTable(data) {
+  const pilarBadge = {
+    "Tenaga Pendidik": "badge-sky",
+    "Tenaga Kependidikan": "badge-gold",
+    "Tenaga Penunjang/Operasional": "badge-violet",
+  };
+  const tbody = document.getElementById("table-body");
+  if (!data.length) {
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center text-slate-400 py-10">Tidak ada data yang sesuai filter</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.map(p => `
+    <tr>
+      <td class="font-mono text-xs text-slate-500">${p.niy || "–"}</td>
+      <td class="font-medium text-slate-800">${p.nama}</td>
+      <td><span class="badge badge-slate">${p.unit || "–"}</span></td>
+      <td><span class="badge badge-gray">${p.status_kepegawaian || "–"}</span></td>
+      <td class="text-slate-700">${p.jabatan_aktif ? (p.jabatan_aktif + (p.rincian_tugas ? " <span class='text-slate-400 text-xs'>· " + p.rincian_tugas + "</span>" : "")) : "–"}</td>
+      <td><span class="badge ${pilarBadge[p.pilar_sdm] || 'badge-gray'}" style="font-size:10.5px">${p.pilar_sdm || "–"}</span></td>
+      <td class="text-slate-500 text-xs">${p.kelompok_masa_kerja || "–"}</td>
+      <td>
+        <button onclick="openProfil('${escHtml(p.nama)}')" class="text-sky-600 hover:text-sky-800 text-xs font-semibold transition-colors">Lihat Profil →</button>
+      </td>
+    </tr>`).join("");
+}
+
+// ============================================================
+// PROFIL TAB
+// ============================================================
+function buildProfilDropdown() {
+  if (!allData) return;
+  window._profilNames = allData.pegawai.map(p => p.nama).sort();
+}
+
+function filterProfilDropdown() {
+  const q = document.getElementById("profil-search").value.toLowerCase();
+  const dd = document.getElementById("profil-dropdown");
+  const names = (window._profilNames || []).filter(n => n.toLowerCase().includes(q));
+  if (!names.length || !q) { dd.classList.add("hidden"); return; }
+  dd.innerHTML = names.slice(0, 8).map(n =>
+    `<div class="dropdown-item" onmousedown="selectProfil('${escHtml(n)}')">${n}</div>`
+  ).join("");
+  dd.classList.remove("hidden");
+}
+
+function showDropdown()       { if (document.getElementById("profil-search").value) filterProfilDropdown(); }
+function hideDropdownDelayed(){ setTimeout(() => document.getElementById("profil-dropdown").classList.add("hidden"), 200); }
+
+function selectProfil(nama) {
+  document.getElementById("profil-search").value = nama;
+  document.getElementById("profil-dropdown").classList.add("hidden");
+  renderProfil(nama);
+}
+
+function openProfil(nama) {
+  showTab("profil");
+  document.getElementById("profil-search").value = nama;
+  renderProfil(nama);
+}
+
+function renderProfil(nama) {
+  if (!allData) return;
+  const pegawai = allData.pegawai.find(p => p.nama === nama);
+  if (!pegawai) return;
+
+  // Tampilkan section
+  document.getElementById("profil-empty").classList.add("hidden");
+  document.getElementById("profil-display").classList.remove("hidden");
+  document.getElementById("btn-cetak").classList.remove("hidden");
+
+  // Header
+  const inisial = nama.split(" ").map(w => w[0]).slice(0,2).join("").toUpperCase();
+  document.getElementById("p-avatar").textContent   = inisial;
+  document.getElementById("p-nama").textContent     = pegawai.nama || "–";
+  document.getElementById("p-niy").textContent      = pegawai.niy || "–";
+  document.getElementById("p-pilar").textContent    = pegawai.pilar_sdm || "–";
+  document.getElementById("p-jabatan-full").textContent =
+    (pegawai.jabatan_aktif || "–") + (pegawai.rincian_tugas ? " · " + pegawai.rincian_tugas : "");
+  document.getElementById("p-unit-badge").textContent   = pegawai.unit || "–";
+  document.getElementById("p-status-kep").textContent   = pegawai.status_kepegawaian || "–";
+
+  // Biodata
+  document.getElementById("p-ttl").textContent    = (pegawai.tempat_lahir && pegawai.tanggal_lahir)
+    ? pegawai.tempat_lahir + ", " + formatDate(pegawai.tanggal_lahir) : "–";
+  document.getElementById("p-usia").textContent   = pegawai.usia ? pegawai.usia + " tahun (" + (pegawai.kelompok_usia || "") + ")" : "–";
+  document.getElementById("p-jk").textContent     = pegawai.jenis_kelamin || "–";
+  document.getElementById("p-menikah").textContent= pegawai.status_pernikahan || "–";
+  document.getElementById("p-gol-darah").textContent = pegawai.golongan_darah || "–";
+  document.getElementById("p-durasi").textContent = pegawai.durasi_pengabdian || "–";
+
+  // Tabel Kepegawaian
+  const kepData = allData.kepegawaian.filter(k => k.nama === nama);
+  renderTableKepegawaian(kepData);
+
+  // Tabel Jabatan
+  const jabData = allData.jabatan.filter(j => j.nama === nama);
+  renderTableJabatan(jabData);
+
+  // Tabel Kepanitiaan
+  const panData = allData.kepanitiaan.filter(k => k.nama === nama);
+  renderTableKepanitiaan(panData);
+
+  // Tabel Pendidikan — BARU
+  const didikData = (allData.pendidikan || []).filter(d => d.nama === nama);
+  renderTablePendidikan(didikData);
+
+  // Tabel Keluarga — BARU
+  const keluargaData = (allData.keluarga || []).filter(k => k.nama === nama);
+  renderTableKeluarga(keluargaData);
+}
+
+function renderTableKepegawaian(data) {
+  const tbody = document.getElementById("p-table-kepegawaian");
+  if (!data.length) { tbody.innerHTML = '<tr><td colspan="6" class="text-center text-slate-400 py-4">Tidak ada data</td></tr>'; return; }
+  tbody.innerHTML = data.map(r => `
+    <tr>
+      <td class="font-medium">${r.status_kepegawaian || "–"}</td>
+      <td>${formatDate(r.tanggal_mulai)}</td>
+      <td>${r.tanggal_selesai ? formatDate(r.tanggal_selesai) : '<span class="text-emerald-600 font-medium">Sekarang</span>'}</td>
+      <td>${r.durasi || "–"}</td>
+      <td><span class="badge badge-slate">${r.kelompok_masa_kerja || "–"}</span></td>
+      <td><span class="badge ${r.status_data === 'Aktif' ? 'badge-green' : 'badge-gray'}">${r.status_data || "–"}</span></td>
+    </tr>`).join("");
+}
+
+function renderTableJabatan(data) {
+  const tbody = document.getElementById("p-table-jabatan");
+  if (!data.length) { tbody.innerHTML = '<tr><td colspan="4" class="text-center text-slate-400 py-4">Tidak ada data</td></tr>'; return; }
+  tbody.innerHTML = data.map(r => `
+    <tr>
+      <td class="font-medium">${r.nama_jabatan || "–"}</td>
+      <td class="text-slate-600">${r.rincian_tugas || '<span class="text-slate-300">–</span>'}</td>
+      <td><span class="badge badge-slate">${r.unit_tugas || "–"}</span></td>
+      <td><span class="badge ${r.status_data === 'Aktif' ? 'badge-green' : 'badge-gray'}">${r.status_data || "–"}</span></td>
+    </tr>`).join("");
+}
+
+function renderTableKepanitiaan(data) {
+  const tbody = document.getElementById("p-table-kepanitiaan");
+  if (!data.length) { tbody.innerHTML = '<tr><td colspan="5" class="text-center text-slate-400 py-4">Tidak ada data kepanitiaan tercatat</td></tr>'; return; }
+  tbody.innerHTML = data.map(r => `
+    <tr>
+      <td class="font-medium">${r.kegiatan || "–"}</td>
+      <td>${r.peran || "–"}</td>
+      <td>${r.tahun || "–"}</td>
+      <td><span class="badge ${r.tingkat === 'Yayasan' ? 'badge-sky' : 'badge-slate'}">${r.tingkat || "–"}</span></td>
+      <td class="text-xs text-slate-400 font-mono">${r.no_sk || "–"}</td>
+    </tr>`).join("");
+}
+
+// ── Riwayat Pendidikan ────────────────────────────────────────
+function renderTablePendidikan(data) {
+  const tbody = document.getElementById("p-table-pendidikan");
+  if (!data.length) { tbody.innerHTML = '<tr><td colspan="7" class="text-center text-slate-400 py-4">Tidak ada data pendidikan tercatat</td></tr>'; return; }
+
+  // Urutkan: SD → SMP → SMA → D3 → S1 → S2 → S3
+  const urutan = ["SD","SMP","SMA/SMK","SMA","MA","D1","D2","D3","D4","S1","Profesi","S2","S3"];
+  const sorted = [...data].sort((a, b) => {
+    const ai = urutan.findIndex(j => a.jenjang.toUpperCase().includes(j.toUpperCase()));
+    const bi = urutan.findIndex(j => b.jenjang.toUpperCase().includes(j.toUpperCase()));
+    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+  });
+
+  const jenjangBadge = { "SD":"badge-slate","SMP":"badge-slate","SMA":"badge-slate","SMK":"badge-slate","MA":"badge-slate","D3":"badge-sky","D4":"badge-sky","S1":"badge-sky","S2":"badge-gold","S3":"badge-violet","Profesi":"badge-green" };
+  const getBadge = (j) => {
+    const key = Object.keys(jenjangBadge).find(k => j.toUpperCase().includes(k.toUpperCase()));
+    return jenjangBadge[key] || "badge-gray";
+  };
+
+  tbody.innerHTML = sorted.map(r => `
+    <tr>
+      <td><span class="badge ${getBadge(r.jenjang)}">${r.jenjang || "–"}</span></td>
+      <td class="font-medium text-slate-800">${r.institusi || "–"}</td>
+      <td class="text-slate-600">${r.jurusan || '<span class="text-slate-300">–</span>'}</td>
+      <td class="text-slate-500">${r.thn_masuk || "–"}</td>
+      <td class="text-slate-500">${r.thn_lulus || "–"}</td>
+      <td>${r.gelar ? '<span class="font-semibold text-sky-700">' + r.gelar + '</span>' : '<span class="text-slate-300">–</span>'}</td>
+      <td class="text-xs text-slate-400">${r.keterangan || "–"}</td>
+    </tr>`).join("");
+}
+
+// ── Data Keluarga ─────────────────────────────────────────────
+function renderTableKeluarga(data) {
+  const tbody = document.getElementById("p-table-keluarga");
+  if (!data.length) { tbody.innerHTML = '<tr><td colspan="7" class="text-center text-slate-400 py-4">Tidak ada data keluarga tercatat</td></tr>'; return; }
+
+  // Urutkan: Suami/Istri dulu, baru anak urut ke-1, ke-2, dst
+  const sorted = [...data].sort((a, b) => {
+    const rank = (h) => {
+      if (h === "Suami" || h === "Istri") return 0;
+      const m = h.match(/ke-(\d+)/);
+      return m ? parseInt(m[1]) : 99;
+    };
+    return rank(a.hubungan) - rank(b.hubungan);
+  });
+
+  const hubunganBadge = {
+    "Suami":     "badge-sky",
+    "Istri":     "badge-sky",
+    "Anak ke-1": "badge-green",
+    "Anak ke-2": "badge-green",
+    "Anak ke-3": "badge-green",
+    "Anak ke-4": "badge-green",
+  };
+
+  tbody.innerHTML = sorted.map(r => {
+    // Hitung usia dari tanggal lahir
+    let usiaStr = "–";
+    if (r.tanggal_lahir) {
+      try {
+        const lahir = new Date(r.tanggal_lahir);
+        const now   = new Date();
+        let usia = now.getFullYear() - lahir.getFullYear();
+        const belumUltah = now.getMonth() < lahir.getMonth() ||
+          (now.getMonth() === lahir.getMonth() && now.getDate() < lahir.getDate());
+        if (belumUltah) usia--;
+        usiaStr = usia + " thn";
+      } catch(e) {}
+    }
+
+    const badge = hubunganBadge[r.hubungan] || "badge-violet";
+    const isPassangan = r.hubungan === "Suami" || r.hubungan === "Istri";
+
+    return `
+    <tr class="${isPassangan ? 'bg-sky-50/30' : ''}">
+      <td><span class="badge ${badge}">${r.hubungan || "–"}</span></td>
+      <td class="font-medium text-slate-800">${r.nama_anggota || "–"}</td>
+      <td class="text-slate-500">${r.tempat_lahir || "–"}</td>
+      <td class="text-slate-600">${r.tanggal_lahir ? formatDate(r.tanggal_lahir) : "–"}</td>
+      <td class="text-slate-500 font-medium">${usiaStr}</td>
+      <td class="text-slate-600">${r.pekerjaan || "–"}</td>
+      <td class="text-xs text-slate-400">${r.keterangan || "–"}</td>
+    </tr>`;
+  }).join("");
+}
+
+// ============================================================
+// UTILITY
+// ============================================================
+function formatDate(dateStr) {
+  if (!dateStr) return "–";
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d)) return dateStr;
+    return d.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
+  } catch(e) { return dateStr; }
+}
+
+function escHtml(str) {
+  return String(str || "").replace(/'/g, "\\'").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+// ============================================================
+// FORM: STEP STATE
+// ============================================================
+let formStep = 0;
+const FORM_STEPS = [
+  { label: "Identitas" },
+  { label: "Data Pribadi" },
+  { label: "Pendidikan" },
+  { label: "Keluarga" },
+  { label: "Lainnya" },
+  { label: "Kirim" },
+];
+let formSelectedPegawai = null;
+
+function initForm() {
+  formStep = 0;
+  formSelectedPegawai = null;
+  renderStepIndicator();
+  showFormStep(0);
+  // Reset semua field
+  ["f-nama","f-tempat-lahir","f-hp","f-email","f-alamat","f-nik","f-npwp","f-bpjs-kes","f-bpjs-tk","f-rekening","f-catatan"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = "";
+  });
+  ["f-jenis-kelamin","f-gol-darah","f-status-nikah","f-bank"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = "";
+  });
+  document.getElementById("f-tanggal-lahir").value = "";
+  document.getElementById("pendidikan-list").innerHTML = "";
+  document.getElementById("keluarga-list").innerHTML = "";
+  document.getElementById("form-search-nama").value = "";
+  document.getElementById("form-selected-info").classList.add("hidden");
+}
+
+function renderStepIndicator() {
+  const labels = ["Identitas","Data Pribadi","Pendidikan","Keluarga","Lainnya","Kirim"];
+  const container = document.getElementById("step-indicator");
+  container.innerHTML = labels.map((label, i) => {
+    const state = i < formStep ? "done" : i === formStep ? "active" : "pending";
+    const icon  = state === "done"
+      ? '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>'
+      : (i + 1);
+    const line  = i < labels.length - 1
+      ? `<div class="step-line ${i < formStep ? 'done' : ''}"></div>` : "";
+    return `
+      <div class="flex items-center gap-0 ${i < labels.length - 1 ? 'flex-1' : ''}">
+        <div class="flex flex-col items-center gap-1 min-w-fit">
+          <div class="step-dot ${state}">${icon}</div>
+          <div style="font-size:10px;color:${state==='active'?'#0EA5E9':state==='done'?'#059669':'#94A3B8'};font-weight:600;white-space:nowrap">${label}</div>
+        </div>
+        ${line}
+      </div>`;
+  }).join("");
+}
+
+function showFormStep(step) {
+  for (let i = 0; i <= 6; i++) {
+    const el = document.getElementById("form-step-" + i);
+    if (el) el.classList.add("hidden");
+  }
+  const target = document.getElementById("form-step-" + step);
+  if (target) { target.classList.remove("hidden"); target.classList.add("fade-in"); }
+  if (step === 5) buildReview();
+  renderStepIndicator();
+}
+
+function formNext() {
+  if (formStep === 0 && !formSelectedPegawai) {
+    showToast("Pilih nama Anda terlebih dahulu", "error"); return;
+  }
+  if (formStep === 1 && !validateStep1()) return;
+  if (formStep < 5) {
+    formStep++;
+    showFormStep(formStep);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+}
+
+function formBack() {
+  if (formStep > 0) {
+    formStep--;
+    showFormStep(formStep);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+}
+
+function validateStep1() {
+  const required = [
+    ["f-nama",          "Nama Lengkap"],
+    ["f-tempat-lahir",  "Tempat Lahir"],
+    ["f-tanggal-lahir", "Tanggal Lahir"],
+    ["f-jenis-kelamin", "Jenis Kelamin"],
+    ["f-status-nikah",  "Status Pernikahan"],
+    ["f-hp",            "No. HP / WhatsApp"],
+  ];
+  for (const [id, label] of required) {
+    if (!document.getElementById(id)?.value?.trim()) {
+      showToast(`Kolom "${label}" wajib diisi`, "error");
+      document.getElementById(id)?.focus();
+      return false;
+    }
+  }
+  return true;
+}
+
+// ============================================================
+// FORM: SEARCH PEGAWAI
+// ============================================================
+function filterFormDropdown() {
+  const q  = document.getElementById("form-search-nama").value.toLowerCase();
+  const dd = document.getElementById("form-dropdown");
+  const names = (window._profilNames || []).filter(n => n.toLowerCase().includes(q));
+  if (!names.length || !q) { dd.classList.add("hidden"); return; }
+  dd.innerHTML = names.slice(0, 8).map(n =>
+    `<div class="dropdown-item" onmousedown="selectFormPegawai('${escHtml(n)}')">${n}</div>`
+  ).join("");
+  dd.classList.remove("hidden");
+}
+
+function showFormDropdown() { if (document.getElementById("form-search-nama").value) filterFormDropdown(); }
+function hideFormDropdownDelayed() { setTimeout(() => document.getElementById("form-dropdown").classList.add("hidden"), 200); }
+
+function selectFormPegawai(nama) {
+  document.getElementById("form-search-nama").value = nama;
+  document.getElementById("form-dropdown").classList.add("hidden");
+
+  formSelectedPegawai = allData?.pegawai?.find(p => p.nama === nama) || { nama };
+
+  // Tampilkan info
+  const inisial = nama.split(" ").map(w => w[0]).slice(0,2).join("").toUpperCase();
+  document.getElementById("form-avatar-mini").textContent = inisial;
+  document.getElementById("form-selected-nama").textContent = nama;
+  document.getElementById("form-selected-sub").textContent =
+    (formSelectedPegawai.jabatan_aktif || "Pegawai") + " · " + (formSelectedPegawai.unit || "");
+  document.getElementById("form-selected-info").classList.remove("hidden");
+
+  // Pre-fill data yang sudah ada
+  if (formSelectedPegawai.nama)              document.getElementById("f-nama").value             = formSelectedPegawai.nama;
+  if (formSelectedPegawai.tempat_lahir)      document.getElementById("f-tempat-lahir").value      = formSelectedPegawai.tempat_lahir;
+  if (formSelectedPegawai.tanggal_lahir)     document.getElementById("f-tanggal-lahir").value     = formSelectedPegawai.tanggal_lahir;
+  if (formSelectedPegawai.jenis_kelamin)     document.getElementById("f-jenis-kelamin").value     = formSelectedPegawai.jenis_kelamin;
+  if (formSelectedPegawai.golongan_darah)    document.getElementById("f-gol-darah").value         = formSelectedPegawai.golongan_darah;
+  if (formSelectedPegawai.status_pernikahan) document.getElementById("f-status-nikah").value      = formSelectedPegawai.status_pernikahan;
+
+  // Pre-fill pendidikan
+  const didikData = (allData?.pendidikan || []).filter(d => d.nama === nama);
+  document.getElementById("pendidikan-list").innerHTML = "";
+  if (didikData.length) didikData.forEach(d => addPendidikanRow(d));
+  else addPendidikanRow();
+
+  // Pre-fill keluarga
+  const kelData = (allData?.keluarga || []).filter(k => k.nama === nama);
+  document.getElementById("keluarga-list").innerHTML = "";
+  if (kelData.length) kelData.forEach(k => addKeluargaRow(k));
+}
+
+// ============================================================
+// FORM: DYNAMIC ROWS — PENDIDIKAN
+// ============================================================
+let pendidikanRowCount = 0;
+
+function addPendidikanRow(data = {}) {
+  pendidikanRowCount++;
+  const id = "pend-" + pendidikanRowCount;
+  const div = document.createElement("div");
+  div.className = "dynamic-row";
+  div.id = id;
+  div.innerHTML = `
+    <button class="btn-remove-row" onclick="removeRow('${id}')" title="Hapus">×</button>
+    <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+      <div>
+        <label class="form-label">Jenjang <span class="req">*</span></label>
+        <select class="form-input pend-jenjang">
+          <option value="">-- Pilih --</option>
+          ${["SD","SMP","SMA/SMK/MA","D1","D2","D3","D4","S1","Profesi","S2","S3"].map(j =>
+            `<option ${data.jenjang===j?"selected":""}>${j}</option>`).join("")}
+        </select>
+      </div>
+      <div class="md:col-span-2">
+        <label class="form-label">Nama Institusi <span class="req">*</span></label>
+        <input type="text" class="form-input pend-institusi" placeholder="Nama sekolah / universitas" value="${data.institusi||""}" />
+      </div>
+      <div class="md:col-span-2">
+        <label class="form-label">Jurusan / Program Studi</label>
+        <input type="text" class="form-input pend-jurusan" placeholder="Jurusan atau prodi" value="${data.jurusan||""}" />
+      </div>
+      <div>
+        <label class="form-label">Gelar</label>
+        <input type="text" class="form-input pend-gelar" placeholder="S.Pd, S.E, dll" value="${data.gelar||""}" />
+      </div>
+      <div>
+        <label class="form-label">Tahun Masuk</label>
+        <input type="number" class="form-input pend-masuk" placeholder="2005" min="1970" max="2030" value="${data.thn_masuk||""}" />
+      </div>
+      <div>
+        <label class="form-label">Tahun Lulus</label>
+        <input type="number" class="form-input pend-lulus" placeholder="2009" min="1970" max="2030" value="${data.thn_lulus||""}" />
+      </div>
+      <div class="md:col-span-3">
+        <label class="form-label">Keterangan</label>
+        <input type="text" class="form-input pend-ket" placeholder="Beasiswa, cum laude, dll (opsional)" value="${data.keterangan||""}" />
+      </div>
+    </div>`;
+  document.getElementById("pendidikan-list").appendChild(div);
+}
+
+// ============================================================
+// FORM: DYNAMIC ROWS — KELUARGA
+// ============================================================
+let keluargaRowCount = 0;
+
+function addKeluargaRow(data = {}) {
+  keluargaRowCount++;
+  const id = "kel-" + keluargaRowCount;
+  const div = document.createElement("div");
+  div.className = "dynamic-row";
+  div.id = id;
+  div.innerHTML = `
+    <button class="btn-remove-row" onclick="removeRow('${id}')" title="Hapus">×</button>
+    <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+      <div>
+        <label class="form-label">Hubungan <span class="req">*</span></label>
+        <select class="form-input kel-hubungan">
+          <option value="">-- Pilih --</option>
+          ${["Suami","Istri","Anak ke-1","Anak ke-2","Anak ke-3","Anak ke-4","Anak ke-5","Orang Tua","Saudara"].map(h =>
+            `<option ${data.hubungan===h?"selected":""}>${h}</option>`).join("")}
+        </select>
+      </div>
+      <div class="md:col-span-2">
+        <label class="form-label">Nama Lengkap <span class="req">*</span></label>
+        <input type="text" class="form-input kel-nama" placeholder="Nama lengkap anggota keluarga" value="${data.nama_anggota||""}" />
+      </div>
+      <div>
+        <label class="form-label">Tempat Lahir</label>
+        <input type="text" class="form-input kel-tempat" placeholder="Kota lahir" value="${data.tempat_lahir||""}" />
+      </div>
+      <div>
+        <label class="form-label">Tanggal Lahir <span class="req">*</span></label>
+        <input type="date" class="form-input kel-tgl" value="${data.tanggal_lahir||""}" />
+      </div>
+      <div>
+        <label class="form-label">Pekerjaan</label>
+        <input type="text" class="form-input kel-kerja" placeholder="Pekerjaan / Pelajar" value="${data.pekerjaan||""}" />
+      </div>
+      <div class="md:col-span-3">
+        <label class="form-label">Keterangan</label>
+        <input type="text" class="form-input kel-ket" placeholder="Kelas, instansi, dll (opsional)" value="${data.keterangan||""}" />
+      </div>
+    </div>`;
+  document.getElementById("keluarga-list").appendChild(div);
+}
+
+function removeRow(id) {
+  document.getElementById(id)?.remove();
+}
+
+// ============================================================
+// FORM: COLLECT DATA
+// ============================================================
+function collectFormData() {
+  const nama = formSelectedPegawai?.nama || document.getElementById("f-nama").value;
+
+  // Pendidikan rows
+  const pendidikanRows = [];
+  document.querySelectorAll("#pendidikan-list .dynamic-row").forEach(row => {
+    const jenjang   = row.querySelector(".pend-jenjang")?.value;
+    const institusi = row.querySelector(".pend-institusi")?.value;
+    if (jenjang && institusi) {
+      pendidikanRows.push({
+        jenjang, institusi,
+        jurusan:    row.querySelector(".pend-jurusan")?.value || "",
+        gelar:      row.querySelector(".pend-gelar")?.value   || "",
+        thn_masuk:  row.querySelector(".pend-masuk")?.value   || "",
+        thn_lulus:  row.querySelector(".pend-lulus")?.value   || "",
+        keterangan: row.querySelector(".pend-ket")?.value     || "",
+      });
+    }
+  });
+
+  // Keluarga rows
+  const keluargaRows = [];
+  document.querySelectorAll("#keluarga-list .dynamic-row").forEach(row => {
+    const hubungan = row.querySelector(".kel-hubungan")?.value;
+    const namaAngg = row.querySelector(".kel-nama")?.value;
+    if (hubungan && namaAngg) {
+      keluargaRows.push({
+        hubungan, nama_anggota: namaAngg,
+        tempat_lahir:  row.querySelector(".kel-tempat")?.value || "",
+        tanggal_lahir: row.querySelector(".kel-tgl")?.value    || "",
+        pekerjaan:     row.querySelector(".kel-kerja")?.value  || "",
+        keterangan:    row.querySelector(".kel-ket")?.value    || "",
+      });
+    }
+  });
+
+  return {
+    nama,
+    niy:               formSelectedPegawai?.niy || "",
+    unit:              formSelectedPegawai?.unit || "",
+    // Data Pribadi
+    tempat_lahir:      document.getElementById("f-tempat-lahir")?.value  || "",
+    tanggal_lahir:     document.getElementById("f-tanggal-lahir")?.value  || "",
+    jenis_kelamin:     document.getElementById("f-jenis-kelamin")?.value  || "",
+    golongan_darah:    document.getElementById("f-gol-darah")?.value      || "",
+    status_pernikahan: document.getElementById("f-status-nikah")?.value   || "",
+    no_hp:             document.getElementById("f-hp")?.value             || "",
+    email:             document.getElementById("f-email")?.value          || "",
+    alamat:            document.getElementById("f-alamat")?.value         || "",
+    // Dokumen
+    nik:               document.getElementById("f-nik")?.value            || "",
+    npwp:              document.getElementById("f-npwp")?.value           || "",
+    bpjs_kes:          document.getElementById("f-bpjs-kes")?.value       || "",
+    bpjs_tk:           document.getElementById("f-bpjs-tk")?.value        || "",
+    rekening:          document.getElementById("f-rekening")?.value       || "",
+    bank:              document.getElementById("f-bank")?.value           || "",
+    catatan:           document.getElementById("f-catatan")?.value        || "",
+    // Relational
+    pendidikan:        pendidikanRows,
+    keluarga:          keluargaRows,
+    // Meta
+    submitted_at:      new Date().toISOString(),
+    status:            "Pending",
+  };
+}
+
+// ============================================================
+// FORM: REVIEW STEP
+// ============================================================
+function buildReview() {
+  const d = collectFormData();
+  const reviewEl = document.getElementById("review-content");
+
+  const row = (label, val) => val
+    ? `<div class="flex gap-3 py-1.5 border-b border-slate-50">
+         <div class="text-xs text-slate-400 w-32 flex-shrink-0 pt-0.5">${label}</div>
+         <div class="text-sm text-slate-800 font-medium">${val}</div>
+       </div>` : "";
+
+  const section = (title, content) => `
+    <div class="rounded-xl border border-slate-100 overflow-hidden">
+      <div class="px-4 py-2.5 font-semibold text-xs uppercase tracking-wider text-slate-500" style="background:#F8FAFC">${title}</div>
+      <div class="px-4 py-2">${content}</div>
+    </div>`;
+
+  const pribadi = [
+    row("Nama", d.nama), row("Tempat Lahir", d.tempat_lahir),
+    row("Tanggal Lahir", d.tanggal_lahir ? formatDate(d.tanggal_lahir) : ""),
+    row("Jenis Kelamin", d.jenis_kelamin), row("Gol. Darah", d.golongan_darah),
+    row("Status Nikah", d.status_pernikahan), row("No. HP", d.no_hp),
+    row("Email", d.email), row("Alamat", d.alamat),
+  ].filter(Boolean).join("") || "<p class='text-slate-400 text-sm py-2'>–</p>";
+
+  const dokumen = [
+    row("NIK", d.nik), row("NPWP", d.npwp),
+    row("BPJS Kesehatan", d.bpjs_kes), row("BPJS Ketenagakerjaan", d.bpjs_tk),
+    row("Rekening", d.rekening ? d.rekening + (d.bank ? " (" + d.bank + ")" : "") : ""),
+    row("Catatan", d.catatan),
+  ].filter(Boolean).join("") || "<p class='text-slate-400 text-sm py-2'>–</p>";
+
+  const pendRows = d.pendidikan.map(p =>
+    `<div class="py-2 border-b border-slate-50 last:border-0">
+       <span class="badge badge-sky text-xs">${p.jenjang}</span>
+       <span class="ml-2 text-sm font-medium text-slate-800">${p.institusi}</span>
+       ${p.jurusan ? `<span class="text-slate-400 text-xs"> · ${p.jurusan}</span>` : ""}
+       ${p.gelar ? `<span class="ml-1 text-xs font-semibold text-sky-700">${p.gelar}</span>` : ""}
+       <div class="text-xs text-slate-400 mt-0.5">${[p.thn_masuk, p.thn_lulus].filter(Boolean).join(" – ")}</div>
+     </div>`).join("") || "<p class='text-slate-400 text-sm py-2'>Tidak ada data pendidikan</p>";
+
+  const kelRows = d.keluarga.map(k =>
+    `<div class="py-2 border-b border-slate-50 last:border-0 flex items-start gap-3">
+       <span class="badge badge-sky text-xs flex-shrink-0 mt-0.5">${k.hubungan}</span>
+       <div>
+         <div class="text-sm font-medium text-slate-800">${k.nama_anggota}</div>
+         <div class="text-xs text-slate-400">${[k.tempat_lahir, k.tanggal_lahir ? formatDate(k.tanggal_lahir) : ""].filter(Boolean).join(", ")}</div>
+       </div>
+     </div>`).join("") || "<p class='text-slate-400 text-sm py-2'>Tidak ada data keluarga</p>";
+
+  reviewEl.innerHTML = [
+    section("Data Pribadi", pribadi),
+    section("Riwayat Pendidikan (" + d.pendidikan.length + " entri)", pendRows),
+    section("Data Keluarga (" + d.keluarga.length + " anggota)", kelRows),
+    section("Dokumen & Lainnya", dokumen),
+  ].join("");
+}
+
+// ============================================================
+// FORM: SUBMIT
+// ============================================================
+async function submitForm() {
+  const btn = document.getElementById("btn-submit-form");
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner" style="width:18px;height:18px;border-width:2px"></div> Mengirim...';
+
+  const payload = collectFormData();
+
+  // Simpan ke localStorage sebagai pending (mode demo / backup)
+  const existing = JSON.parse(localStorage.getItem("hris_pending") || "[]");
+  payload.id = "PND-" + Date.now();
+  existing.push(payload);
+  localStorage.setItem("hris_pending", JSON.stringify(existing));
+
+  // Coba kirim ke Apps Script jika API URL tersedia
+  if (API_URL && !API_URL.includes("GANTI_DENGAN")) {
+    try {
+      await fetch(API_URL, {
+        method: "POST",
+        mode:   "no-cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "submitPending", data: payload })
+      });
+    } catch(e) {
+      console.warn("POST ke API gagal, data tersimpan lokal:", e.message);
+    }
+  }
+
+  // Tampilkan success
+  await new Promise(r => setTimeout(r, 600));
+  formStep = 6;
+  showFormStep(6);
+  document.getElementById("success-nama").textContent = payload.nama;
+  updatePendingBadge();
+
+  btn.disabled = false;
+  btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Kirim ke Admin';
+}
+
+function resetForm() {
+  initForm();
+}
+
+// ============================================================
+// APPROVAL: LOAD & RENDER
+// ============================================================
+let pendingData = [];
+
+function loadPendingData() {
+  // Baca dari localStorage
+  pendingData = JSON.parse(localStorage.getItem("hris_pending") || "[]");
+  updatePendingBadge();
+  renderApprovalList();
+}
+
+function updatePendingBadge() {
+  const data  = JSON.parse(localStorage.getItem("hris_pending") || "[]");
+  const count = data.filter(d => d.status === "Pending").length;
+  const badge = document.getElementById("pending-badge");
+  if (badge) {
+    badge.textContent = count;
+    badge.classList.toggle("hidden", count === 0);
+  }
+}
+
+function renderApprovalList() {
+  const filterStatus = document.getElementById("approval-filter")?.value || "";
+  const filtered = filterStatus
+    ? pendingData.filter(d => d.status === filterStatus)
+    : pendingData;
+
+  const container = document.getElementById("approval-list");
+
+  if (!filtered.length) {
+    container.innerHTML = `
+      <div class="text-center py-12 text-slate-400">
+        <svg class="w-12 h-12 mx-auto mb-3 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+        <p>Tidak ada pengajuan ${filterStatus ? '"' + filterStatus + '"' : ""}</p>
+      </div>`;
+    return;
+  }
+
+  const statusBadge = {
+    "Pending":  '<span class="badge" style="background:#FEF3C7;color:#92400E">⏳ Menunggu</span>',
+    "Approved": '<span class="badge badge-green">✓ Disetujui</span>',
+    "Rejected": '<span class="badge" style="background:#FEE2E2;color:#991B1B">✗ Ditolak</span>',
+  };
+
+  container.innerHTML = [...filtered].reverse().map(d => {
+    const waktu = d.submitted_at ? new Date(d.submitted_at).toLocaleString("id-ID", { dateStyle:"short", timeStyle:"short" }) : "–";
+    const inisial = d.nama.split(" ").map(w => w[0]).slice(0,2).join("").toUpperCase();
+    return `
+      <div class="approval-card status-${(d.status||"Pending").toLowerCase()}">
+        <div class="p-4 flex items-start justify-between gap-4">
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-white font-bold text-sm" style="background:linear-gradient(135deg,#0EA5E9,#0369A1)">${inisial}</div>
+            <div class="min-w-0">
+              <div class="font-semibold text-slate-800">${d.nama}</div>
+              <div class="text-xs text-slate-400 mt-0.5">${d.niy || "–"} · ${d.unit || "–"} · ${waktu}</div>
+              <div class="flex flex-wrap gap-1.5 mt-2">
+                ${d.pendidikan?.length ? `<span class="badge badge-sky text-xs">${d.pendidikan.length} pendidikan</span>` : ""}
+                ${d.keluarga?.length  ? `<span class="badge badge-gold text-xs">${d.keluarga.length} keluarga</span>` : ""}
+                ${d.no_hp ? `<span class="badge badge-slate text-xs">HP: ${d.no_hp}</span>` : ""}
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 flex-shrink-0">
+            ${statusBadge[d.status] || statusBadge["Pending"]}
+            <button onclick="openApprovalModal('${d.id}')" class="btn-secondary text-xs py-1.5 px-3">Detail →</button>
+          </div>
+        </div>
+        ${d.status === "Pending" ? `
+        <div class="px-4 pb-4 flex gap-2">
+          <button onclick="approveEntry('${d.id}')" class="flex-1 py-2 rounded-lg text-sm font-semibold text-white transition-all hover:opacity-90" style="background:linear-gradient(135deg,#059669,#047857)">
+            ✓ Setujui
+          </button>
+          <button onclick="rejectEntry('${d.id}')" class="flex-1 py-2 rounded-lg text-sm font-semibold border transition-all hover:bg-rose-50" style="border-color:#FCA5A5;color:#DC2626">
+            ✗ Tolak
+          </button>
+        </div>` : ""}
+      </div>`;
+  }).join("");
+}
+
+// ============================================================
+// APPROVAL: ACTIONS
+// ============================================================
+function approveEntry(id) {
+  const data = JSON.parse(localStorage.getItem("hris_pending") || "[]");
+  const idx  = data.findIndex(d => d.id === id);
+  if (idx === -1) return;
+  data[idx].status = "Approved";
+  data[idx].approved_at = new Date().toISOString();
+  localStorage.setItem("hris_pending", JSON.stringify(data));
+  pendingData = data;
+  updatePendingBadge();
+  renderApprovalList();
+  closeModal();
+  showToast("✓ Data berhasil disetujui", "success");
+
+  // Kirim ke Apps Script jika tersedia
+  if (API_URL && !API_URL.includes("GANTI_DENGAN")) {
+    fetch(API_URL, {
+      method: "POST", mode: "no-cors",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "approveEntry", id, data: data[idx] })
+    }).catch(e => console.warn("Sync approve gagal:", e.message));
+  }
+}
+
+function rejectEntry(id) {
+  if (!confirm("Yakin ingin menolak pengajuan ini?")) return;
+  const data = JSON.parse(localStorage.getItem("hris_pending") || "[]");
+  const idx  = data.findIndex(d => d.id === id);
+  if (idx === -1) return;
+  data[idx].status = "Rejected";
+  data[idx].rejected_at = new Date().toISOString();
+  localStorage.setItem("hris_pending", JSON.stringify(data));
+  pendingData = data;
+  updatePendingBadge();
+  renderApprovalList();
+  closeModal();
+  showToast("Pengajuan ditolak", "info");
+}
+
+// ============================================================
+// MODAL DETAIL APPROVAL
+// ============================================================
+function openApprovalModal(id) {
+  const d = pendingData.find(x => x.id === id);
+  if (!d) return;
+
+  document.getElementById("modal-title").textContent = d.nama;
+  document.getElementById("modal-subtitle").textContent =
+    (d.niy || "–") + " · " + (d.unit || "–") + " · Dikirim: " +
+    (d.submitted_at ? new Date(d.submitted_at).toLocaleString("id-ID") : "–");
+
+  const row  = (l, v) => v ? `<div class="flex gap-3 py-1.5 border-b border-slate-50 last:border-0"><div class="text-xs text-slate-400 w-32 flex-shrink-0">${l}</div><div class="text-sm text-slate-800 font-medium">${v}</div></div>` : "";
+
+  document.getElementById("modal-body").innerHTML = `
+    <div class="space-y-4">
+      <div>
+        <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Data Pribadi</div>
+        ${[row("Tempat Lahir", d.tempat_lahir), row("Tanggal Lahir", d.tanggal_lahir ? formatDate(d.tanggal_lahir) : ""),
+           row("Jenis Kelamin", d.jenis_kelamin), row("Gol. Darah", d.golongan_darah),
+           row("Status Nikah", d.status_pernikahan), row("No. HP", d.no_hp),
+           row("Email", d.email), row("Alamat", d.alamat)].filter(Boolean).join("") || "<p class='text-slate-400 text-sm'>–</p>"}
+      </div>
+      ${d.pendidikan?.length ? `
+      <div>
+        <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Pendidikan (${d.pendidikan.length})</div>
+        ${d.pendidikan.map(p => `<div class="py-2 border-b border-slate-50 last:border-0"><span class="badge badge-sky text-xs">${p.jenjang}</span> <strong>${p.institusi}</strong>${p.jurusan?" · "+p.jurusan:""} ${p.gelar?"<em>("+p.gelar+")</em>":""}<div class="text-xs text-slate-400 mt-0.5">${[p.thn_masuk,p.thn_lulus].filter(Boolean).join("–")}</div></div>`).join("")}
+      </div>` : ""}
+      ${d.keluarga?.length ? `
+      <div>
+        <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Keluarga (${d.keluarga.length})</div>
+        ${d.keluarga.map(k => `<div class="py-2 border-b border-slate-50 last:border-0 flex gap-3"><span class="badge badge-gold text-xs flex-shrink-0">${k.hubungan}</span><div><div class="text-sm font-medium">${k.nama_anggota}</div><div class="text-xs text-slate-400">${[k.tempat_lahir, k.tanggal_lahir?formatDate(k.tanggal_lahir):""].filter(Boolean).join(", ")}</div></div></div>`).join("")}
+      </div>` : ""}
+      ${(d.nik||d.npwp||d.bpjs_kes||d.rekening||d.catatan) ? `
+      <div>
+        <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Dokumen & Lainnya</div>
+        ${[row("NIK",d.nik),row("NPWP",d.npwp),row("BPJS Kes",d.bpjs_kes),row("BPJS TK",d.bpjs_tk),row("Rekening",d.rekening?(d.rekening+(d.bank?" ("+d.bank+")":"")):null),row("Catatan",d.catatan)].filter(Boolean).join("")}
+      </div>` : ""}
+    </div>`;
+
+  const actions = document.getElementById("modal-actions");
+  if (d.status === "Pending") {
+    actions.innerHTML = `
+      <button onclick="rejectEntry('${id}')" class="btn-secondary" style="color:#DC2626;border-color:#FCA5A5">✗ Tolak</button>
+      <button onclick="approveEntry('${id}')" class="btn-primary" style="background:linear-gradient(135deg,#059669,#047857)">✓ Setujui & Simpan</button>`;
+  } else {
+    actions.innerHTML = `<button onclick="closeModal()" class="btn-secondary">Tutup</button>`;
+  }
+
+  document.getElementById("modal-overlay").classList.remove("hidden");
+}
+
+function closeModal() {
+  document.getElementById("modal-overlay").classList.add("hidden");
+}
+
+// Tutup modal klik di luar
+document.getElementById("modal-overlay").addEventListener("click", function(e) {
+  if (e.target === this) closeModal();
+});
+
+// ============================================================
+// TOAST NOTIFICATION
+// ============================================================
+function showToast(msg, type = "info") {
+  const existing = document.getElementById("main-toast");
+  if (existing) existing.remove();
+
+  const toast = document.createElement("div");
+  toast.id = "main-toast";
+  toast.className = `toast ${type}`;
+  toast.innerHTML = `
+    ${type==="success" ? "✓" : type==="error" ? "✕" : "ℹ"}
+    <span>${msg}</span>`;
+  document.body.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add("show"));
+  setTimeout(() => {
+    toast.classList.remove("show");
+    setTimeout(() => toast.remove(), 400);
+  }, 3000);
+}
+</script>
+</body>
+</html>
